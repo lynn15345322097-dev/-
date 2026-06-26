@@ -153,8 +153,6 @@
 </nav>
 </div>
 <div class="flex items-center gap-3 md:gap-6">
-<span class="text-xs md:text-body-md text-on-surface-variant">__REVIEWER_STATUS__</span>
-<button class="text-xs md:text-body-md text-primary font-semibold hover:opacity-70 transition-opacity">Logout</button>
 </div>
 </div>
 </header>
@@ -196,15 +194,9 @@
 <!-- Main Content Canvas -->
 <div class="flex-1 px-4 md:px-8 lg:px-margin-desktop py-4 md:py-8 relative overflow-hidden min-w-0">
 <!-- Content Header Area -->
-<div class="max-w-4xl mx-auto mb-4 grid grid-cols-1 md:grid-cols-2 gap-8 border-b border-outline-variant/30 pb-3">
-<div>
-<span class="font-label-sm text-label-sm text-secondary uppercase tracking-widest mb-2 block">Target Style / 目标风格</span>
-<h2 class="font-headline-md text-headline-md">High-Dynasty Ink Landscape (宋代水墨山水)</h2>
-</div>
-<div>
-<span class="font-label-sm text-label-sm text-secondary uppercase tracking-widest mb-2 block">Prompt Context / 提示语背景</span>
-<p class="font-body-md text-body-md italic text-on-surface-variant">"Mountains shrouded in mist, lone pine on the ridge, distant boats on silent water, expressive brushwork."</p>
-</div>
+<div class="max-w-4xl mx-auto mb-4 border-b border-outline-variant/30 pb-3">
+<span class="font-label-sm text-label-sm text-secondary uppercase tracking-widest mb-1 block">Target Style / 目标风格</span>
+<h2 class="font-headline-md text-headline-md">__STYLE_HEADER__</h2>
 </div>
 <!-- Image Inspection Area -->
 <section class="max-w-4xl mx-auto relative group">
@@ -225,7 +217,7 @@ __PREV_BUTTON__
 </div>
 <!-- Right Rating Sidebar -->
 <aside class="w-full lg:w-[400px] bg-surface-container-low/50 border-t lg:border-t-0 lg:border-l border-outline-variant/20 p-4 md:p-8 lg:h-screen lg:sticky lg:top-0 overflow-y-auto">
-__PROMPT_REMINDER__
+__PROMPT_BOX__
 <h3 class="font-headline-md text-headline-md mb-6 border-b border-primary/10 pb-4">Rating Form / 评审表</h3>
 <form class="flex flex-col gap-12" id="ratingForm">
 <!-- Numeric Scales -->

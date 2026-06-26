@@ -34,7 +34,7 @@ DB_PATH = WEB_DIR / "app.db"
 HOST = os.environ.get("HOST", "0.0.0.0")
 PORT = int(os.environ.get("PORT", "8063"))
 
-ADMIN_IDS: set[str] = set(os.environ.get("ADMIN_IDS", "").split(",")) - {""}
+ADMIN_IDS: set[str] = set(os.environ.get("ADMIN_IDS", "LYNN").split(",")) - {""}
 
 
 def is_admin(rater_id: str | None) -> bool:
@@ -62,6 +62,53 @@ def esc(value: object) -> str:
 
 def ref_page(name: str) -> str:
     return (REF_DIR / name / "code.html").read_text(encoding="utf-8")
+
+
+def metadata_by_image_id() -> dict[str, dict[str, str]]:
+    metadata_csv_path = DATA_DIR / "metadata.csv"
+    if not metadata_csv_path.exists():
+        return {}
+    with metadata_csv_path.open(newline="", encoding="utf-8") as f:
+        return {
+            row["image_id"]: row
+            for row in csv.DictReader(f)
+            if row.get("image_id")
+        }
+
+
+def real_prompt_for_image(image_id: str, fallback: str = "") -> str:
+    meta = metadata_by_image_id().get(image_id, {})
+    return (meta.get("original_prompt") or fallback or "").strip()
+
+
+def apply_top_nav(page: str, active: str, rater_id: str | None) -> str:
+    active_class = "text-primary border-b-2 border-primary pb-1 transition-colors duration-300"
+    inactive_class = "text-on-surface-variant hover:text-primary transition-colors duration-300"
+    nav_items = [
+        ("profile", "Dashboard", "/profile"),
+        ("rate", "Gallery", "/rate"),
+    ]
+    if is_admin(rater_id):
+        nav_items.append(("admin", "Archive", "/admin"))
+    links = "\n".join(
+        f'<a class="{active_class if key == active else inactive_class}" href="{href}">{label}</a>'
+        for key, label, href in nav_items
+    )
+
+    def replace_nav(match: re.Match[str]) -> str:
+        return f'{match.group(1)}\n{links}\n</nav>'
+
+    page = re.sub(
+        r'(<nav class="[^"]*">)\s*<a[^>]*>Dashboard</a>\s*<a[^>]*>Gallery</a>\s*<a[^>]*>Archive</a>\s*</nav>',
+        replace_nav,
+        page,
+        count=1,
+        flags=re.DOTALL,
+    )
+    page = page.replace('href="#">Dashboard</a>', 'href="/profile">Dashboard</a>')
+    page = page.replace('href="#">Gallery</a>', 'href="/rate">Gallery</a>')
+    page = page.replace('href="#">Archive</a>', 'href="/admin">Archive</a>' if is_admin(rater_id) else 'href="/profile">Archive</a>')
+    return page
 
 
 def localize_zh(page: str) -> str:
@@ -152,6 +199,12 @@ def init_db() -> None:
                 expected_elements text,
                 forbidden_elements text
             );
+            create table if not exists feedback (
+                id integer primary key autoincrement,
+                rater_id text not null,
+                content text not null,
+                created_at text not null
+            );
             create table if not exists human_scores (
                 rating_id text primary key,
                 image_id text not null,
@@ -212,6 +265,7 @@ def import_rating_items() -> int:
 
     count = 0
     image_ids = set()
+    metadata = metadata_by_image_id()
     with RATING_ITEMS_CSV.open(newline="", encoding="utf-8") as f, connect() as conn:
         for row in csv.DictReader(f):
             image_id = row.get("image_id", "").strip()
@@ -219,6 +273,7 @@ def import_rating_items() -> int:
             if not image_id or not blind_filename:
                 continue
 
+            prompt_text = (metadata.get(image_id, {}).get("original_prompt") or row.get("prompt_text", "")).strip()
             image_ids.add(image_id)
             conn.execute(
                 """
@@ -241,7 +296,7 @@ def import_rating_items() -> int:
                     blind_filename,
                     row.get("target_style", ""),
                     row.get("prompt_level", ""),
-                    row.get("prompt_text", ""),
+                    prompt_text,
                     row.get("expected_elements", ""),
                     row.get("forbidden_elements", ""),
                 ),
@@ -376,8 +431,28 @@ def progress_for(rater_id: str | None = None) -> dict[str, int]:
     return {"total": total, "done": done, "remaining": max(total - done, 0), "raters": raters}
 
 
-def next_item(rater_id: str) -> sqlite3.Row | None:
+def next_item(rater_id: str, exclude_image_id: str | None = None) -> sqlite3.Row | None:
     with connect() as conn:
+        params: list[str] = [rater_id]
+        exclude_clause = ""
+        if exclude_image_id:
+            exclude_clause = "and image_id != ?"
+            params.append(exclude_image_id)
+        row = conn.execute(
+            """
+            select *
+            from rating_items
+            where image_id not in (
+                select image_id from human_scores where rater_id = ?
+            )
+            {exclude_clause}
+            order by abs(random())
+            limit 1
+            """.format(exclude_clause=exclude_clause),
+            params,
+        ).fetchone()
+        if row is not None or not exclude_image_id:
+            return row
         return conn.execute(
             """
             select *
@@ -509,15 +584,7 @@ def render_profile(rater_id: str) -> str:
         flags=re.DOTALL,
     )
 
-    page = page.replace('href="#">', 'href="/profile">', 1)
-    page = page.replace('href="#">Gallery</a>', 'href="/rate">Gallery</a>')
-    if is_admin(rater_id):
-        page = page.replace('href="#">Archive</a>', 'href="/admin">Archive</a>')
-    else:
-        page = page.replace(
-            '<a class="text-on-surface-variant hover:text-primary transition-colors duration-300" href="#">Archive</a>',
-            '',
-        )
+    page = apply_top_nav(page, "profile", rater_id)
 
     # Clean footer: remove 资源/规范指南/墨迹库/法律/隐私协议/版权声明 links
     page = re.sub(
@@ -533,7 +600,6 @@ def render_profile(rater_id: str) -> str:
 document.querySelectorAll('button').forEach((button) => {{
   const text = button.innerText || '';
   if (text.includes('开始') || text.includes('Begin') || text.includes('继续') || text.includes('Continue') || text.includes('Start')) button.onclick = () => location.href = '/rate';
-  if (text.includes('Logout')) button.onclick = () => location.href = '/logout';
 }});
 </script>
 </body>""")
@@ -550,10 +616,42 @@ def render_done(rater_id: str = "") -> str:
         count=1,
         flags=re.DOTALL,
     )
-    page = page.replace("High-Dynasty Ink Landscape (宋代水墨山水)", "评分已完成")
-    page = page.replace('"Mountains shrouded in mist, lone pine on the ridge, distant boats on silent water, expressive brushwork."', "当前没有未评分图像。")
-    page = page.replace("Apply Seal / 落款评定", "Return / 返回主页")
-    page = page.replace("</body>", "<script>document.getElementById('ratingForm').onsubmit=(e)=>{e.preventDefault();location.href='/profile';}</script></body>")
+    page = page.replace("__STYLE_HEADER__", "")
+    page = page.replace("__PROMPT_BOX__", "")
+    page = page.replace("__COMMENT_VALUE__", "")
+    page = page.replace("__PREV_BUTTON__", "")
+
+    # Build the completion page content
+    done_content = f"""<div class="max-w-2xl mx-auto text-center py-16">
+<h2 class="font-headline-md text-headline-md text-primary mb-6">您已完成全部图像评分。</h2>
+<p class="font-body-lg text-body-lg text-primary mb-2">感谢您的参与和支持！</p>
+<p class="font-body-md text-body-md text-on-surface-variant mb-12">本次评分结果将用于中国传统视觉风格 T2I 图像生成评价研究。<br/>数据将匿名处理，仅用于研究分析。</p>
+<div class="max-w-md mx-auto text-left">
+<p class="font-label-sm text-label-sm text-secondary mb-2">可选反馈</p>
+<form method="post" action="/feedback">
+<textarea class="w-full min-h-32 bg-transparent border border-outline-variant rounded-sm p-3 font-body-md text-body-md focus:ring-0 focus:border-primary mb-6" name="content" placeholder="如有任何建议或想法，请在此留言..."></textarea>
+<button class="w-full py-4 bg-primary text-on-primary font-headline-md hover:opacity-90 transition-all" type="submit">提交反馈并结束</button>
+</form>
+</div>
+</div>"""
+
+    # Replace the main content area (keep sidebar, replace everything between sidebar and rating form)
+    page = re.sub(
+        r'(<!-- Main Content Canvas -->).*?(<!-- Right Rating Sidebar -->)',
+        r'\1' + done_content + r'\2',
+        page,
+        count=1,
+        flags=re.DOTALL,
+    )
+    # Remove the rating form sidebar
+    page = re.sub(
+        r'<!-- Right Rating Sidebar -->.*?</aside>',
+        '',
+        page,
+        count=1,
+        flags=re.DOTALL,
+    )
+    page = apply_top_nav(page, "rate", rater_id)
     return page
 
 
@@ -625,28 +723,23 @@ def render_rate(rater_id: str, message: str = "", show_prev: bool = False, image
 
     page = page.replace("Inspector 01", esc(rater_id))
 
+    prompt_text = real_prompt_for_image(current_image_id, item["prompt_text"])
     header_style_text = f"{esc(item['target_style'])} · {esc(item['prompt_level'])} · {esc(current_image_id)}"
     if show_prev:
         header_style_text += " (正在修改上一张已评分图片)"
     elif is_rated:
         header_style_text += " (已评分，可修改)"
 
-    # Replace the entire Content Header Area with a minimal single-line header
-    page = re.sub(
-        r'<!-- Content Header Area -->.*?</div>\s*</div>',
-        f'<!-- Content Header Area --><div class="max-w-4xl mx-auto mb-4 border-b border-outline-variant/30 pb-3"><span class="font-label-sm text-label-sm text-secondary uppercase tracking-widest mb-1 block">Target Style / 目标风格</span><h2 class="font-headline-md text-headline-md">{header_style_text}</h2></div>',
-        page,
-        count=1,
-        flags=re.DOTALL,
-    )
+    page = page.replace("__STYLE_HEADER__", header_style_text)
 
-    prompt_raw = item["prompt_text"] or ""
-    prompt_raw = prompt_raw.strip().strip('"').strip("'")
-    for prefix in ["生成一幅", "生成一张", "生成一副", "生成一个", "生成", "一幅", "一张", "一副", "一个"]:
-        if prompt_raw.startswith(prefix):
-            prompt_raw = prompt_raw[len(prefix):]
-            break
-    prompt_text = prompt_raw.strip()
+    # Inject the exact generation prompt into the right sidebar above rating form.
+    prompt_box = f"""<div class="mb-4 p-3 bg-surface-container-high border border-outline-variant/30 rounded-sm">
+<p class="font-label-sm text-label-sm text-secondary mb-1">目标风格</p>
+<p class="font-body-md font-semibold mb-2">{esc(item['target_style'])} · {esc(item['prompt_level'])}</p>
+<p class="font-label-sm text-label-sm text-secondary mb-1">提示词</p>
+<p class="font-body-md text-body-md text-on-surface-variant">{esc(prompt_text)}</p>
+</div>"""
+    page = page.replace("__PROMPT_BOX__", prompt_box)
 
     page = page.replace(
         'src="https://lh3.googleusercontent.com/aida-public/AB6AXuBleeff-Ofj14uKDDtSIqCjnAZkHlxT8cOPI1ueeJOIbGN_5tVFatJMwRytlB_MADW3S6NQrpxyDtbu9dBogXaLm_coFnle7UMkC14J_JJwzEq-kWv2jdlq6uY2V1UyqbTH1p_0qJJN-mc34w213OwossAsFOAZH6F0rNtGuzVWWjX7PrPKwx6a3Q5TOipMht_B3xDEKUeTKo-I9qW-yPjMd0WkGJItT-Ws71DQ3UurW81ejjeI4FItVOTTKmOGJUSeq6oFQvmYI4Y"',
@@ -664,23 +757,11 @@ def render_rate(rater_id: str, message: str = "", show_prev: bool = False, image
         }
     page = replace_radio_names(page, prefilled)
 
-    # Inject prompt reminder into right sidebar so reviewers don't need to scroll up
-    prompt_reminder = f"""<div class="mb-4 p-3 bg-surface-container-high border border-outline-variant/30 rounded-sm">
-<p class="font-label-sm text-label-sm text-secondary mb-1">目标风格</p>
-<p class="font-body-md font-semibold mb-2">{esc(item['target_style'])} · {esc(item['prompt_level'])}</p>
-<p class="font-label-sm text-label-sm text-secondary mb-1">提示词</p>
-<p class="font-body-md text-body-md italic text-on-surface-variant">{esc(prompt_text)}</p>
-</div>"""
-    page = page.replace("__PROMPT_REMINDER__", prompt_reminder)
-
-    p = progress_for(rater_id)
-    pct = 0 if p["total"] == 0 else round(p["done"] / p["total"] * 100)
-    page = page.replace("__REVIEWER_STATUS__", f"评审进度 {p['done']}/{p['total']} ({pct}%)")
-
     comment_val = ""
     if show_prev or is_rated:
         comment_val = esc(item["comment"] or "")
     page = page.replace("__COMMENT_VALUE__", comment_val)
+    page = page.replace("comment value", comment_val)
 
     # Pre-check error tags if revisiting a rated image
     if rated_error_tags:
@@ -690,14 +771,10 @@ def render_rate(rater_id: str, message: str = "", show_prev: bool = False, image
                 f'value="{esc(tag)}" type="checkbox" checked',
             )
 
-    has_prev_item = prev_item(rater_id) is not None
     if show_prev:
         prev_btn_html = '<button class="px-8 py-3 text-primary hover:text-primary-dark transition-colors border border-primary rounded-sm font-label-sm" type="button" onclick="location.href=\'/rate\'">返回当前</button>'
     else:
-        if has_prev_item:
-            prev_btn_html = '<button class="px-8 py-3 text-primary hover:text-primary-dark transition-colors border border-primary rounded-sm font-label-sm" type="button" onclick="location.href=\'/rate?prev=1\'">查看上一张</button>'
-        else:
-            prev_btn_html = '<button class="px-8 py-3 text-on-surface-variant opacity-50 cursor-not-allowed border border-outline-variant/30 rounded-sm font-label-sm" type="button" disabled>查看上一张</button>'
+        prev_btn_html = '<button class="px-8 py-3 text-primary hover:text-primary-dark transition-colors border border-primary rounded-sm font-label-sm" type="button" onclick="location.href=\'/rate?skip=1\'">下一张图片</button>'
     page = page.replace("__PREV_BUTTON__", prev_btn_html)
 
     if message:
@@ -710,24 +787,8 @@ def render_rate(rater_id: str, message: str = "", show_prev: bool = False, image
         "document.getElementById('ratingForm').addEventListener('submit', (e) => {\n            return true;\n        });\n        document.getElementById('ratingForm_unused')?.addEventListener('submit', (e) => {",
     )
 
-    # Fix nav: on rate page, Gallery should be the active link
-    page = page.replace(
-        '<a class="text-primary dark:text-primary border-b-2 border-primary pb-1 cursor-pointer active:opacity-70 transition-opacity" href="#">Dashboard</a>',
-        '<a class="text-on-surface-variant dark:text-on-surface-variant hover:text-primary dark:hover:text-primary transition-colors duration-300" href="/profile">Dashboard</a>',
-    )
-    page = page.replace(
-        '<a class="text-on-surface-variant dark:text-on-surface-variant hover:text-primary dark:hover:text-primary transition-colors duration-300" href="#">Gallery</a>',
-        '<a class="text-primary dark:text-primary border-b-2 border-primary pb-1 cursor-pointer active:opacity-70 transition-opacity" href="/rate">Gallery</a>',
-    )
-    if is_admin(rater_id):
-        page = page.replace('href="#">Archive</a>', 'href="/admin">Archive</a>')
-    else:
-        page = page.replace(
-            '<a class="text-on-surface-variant dark:text-on-surface-variant hover:text-primary dark:hover:text-primary transition-colors duration-300" href="#">Archive</a>',
-            '',
-        )
+    page = apply_top_nav(page, "rate", rater_id)
     page = page.replace("Return to Studio / 返回工作室", "Return to Studio / 返回工作室")
-    page = page.replace("</body>", "<script>document.querySelectorAll('button').forEach(b=>{if((b.innerText||'').includes('Logout')) b.onclick=()=>location.href='/logout';});</script></body>")
     return page
 
 
@@ -739,24 +800,27 @@ def render_admin(rater_id: str | None, imported: int | None = None) -> str:
     if imported is not None:
         page = page.replace("评分管理概览", f"评分管理概览 · Imported {imported}")
 
-    # Fix nav: on admin page, Archive should be the active link
-    page = page.replace(
-        '<a class="font-body-md text-primary border-b-2 border-primary pb-1 transition-colors duration-300" href="#">Dashboard</a>',
-        '<a class="font-body-md text-on-surface-variant hover:text-primary transition-colors duration-300" href="/profile">Dashboard</a>',
-    )
-    page = page.replace(
-        '<a class="font-body-md text-on-surface-variant hover:text-primary transition-colors duration-300" href="#">Gallery</a>',
-        '<a class="font-body-md text-on-surface-variant hover:text-primary transition-colors duration-300" href="/rate">Gallery</a>',
-    )
-    page = page.replace(
-        '<a class="font-body-md text-on-surface-variant hover:text-primary transition-colors duration-300" href="#">Archive</a>',
-        '<a class="font-body-md text-primary border-b-2 border-primary pb-1 transition-colors duration-300" href="/admin">Archive</a>',
-    )
+    page = apply_top_nav(page, "admin", rater_id)
+
+    # Inject feedback list
+    with connect() as conn:
+        fb_rows = conn.execute(
+            "select rater_id, content, created_at from feedback order by created_at desc"
+        ).fetchall()
+    if fb_rows:
+        fb_html = '<section class="mt-12"><h3 class="font-headline-md text-primary mb-4">评审者反馈</h3><div class="space-y-4">'
+        for fb in fb_rows:
+            fb_html += f"""<div class="p-4 bg-surface-container-low border border-outline-variant/20">
+<p class="font-label-sm text-label-sm text-secondary mb-1">{esc(fb['rater_id'])} · {esc(fb['created_at'][:19])}</p>
+<p class="font-body-md text-body-md">{esc(fb['content'])}</p>
+</div>"""
+        fb_html += '</div></section>'
+        page = page.replace("<!-- Footer Seal Decoration -->", fb_html + "\n<!-- Footer Seal Decoration -->")
+
     page = page.replace("</body>", """
 <script>
 document.querySelectorAll('button').forEach((button) => {
   const text = button.innerText || '';
-  if (text.includes('Logout')) button.onclick = () => location.href = '/logout';
   if (text.includes('Export') || text.includes('导出')) button.onclick = () => location.href = '/admin/export';
   if (text.includes('Import') || text.includes('导入')) button.onclick = () => fetch('/admin/import', {method:'POST'}).then(()=>location.reload());
 });
@@ -826,16 +890,23 @@ class App(BaseHTTPRequestHandler):
             if (r := self.require_login()):
                 query = parse_qs(urlparse(self.path).query)
                 show_prev = "prev" in query
+                skip_current = "skip" in query
                 req_image_id = (query.get("image_id", [""])[0] or "").strip() or None
                 cookie_jar = cookies.SimpleCookie(self.headers.get("Cookie", ""))
                 cookie_image_id = (cookie_jar.get("current_image_id").value if cookie_jar.get("current_image_id") else None)
 
-                # Priority: explicit image_id param > cookie (unrated only) > random next
+                # Priority: explicit image_id param > cookie (unrated only) > random next.
+                # Pick once here and pass the exact image into render_rate so image, prompt,
+                # and current_image_id cookie stay aligned.
                 message = ""
                 target_image_id = None
 
                 if show_prev:
                     target_image_id = None
+                elif skip_current:
+                    item = next_item(r, exclude_image_id=cookie_image_id)
+                    if item:
+                        target_image_id = item["image_id"]
                 elif req_image_id:
                     target_image_id = req_image_id
                     if get_item_with_score(req_image_id, r) is None:
@@ -854,6 +925,7 @@ class App(BaseHTTPRequestHandler):
                     if item is None:
                         item = next_item(r)
                     if item:
+                        target_image_id = item["image_id"]
                         c = cookies.SimpleCookie()
                         c["current_image_id"] = item["image_id"]
                         c["current_image_id"]["path"] = "/"
@@ -916,6 +988,16 @@ class App(BaseHTTPRequestHandler):
         elif path == "/rate":
             if (r := self.require_login()):
                 self.submit_rating(r, form)
+        elif path == "/feedback":
+            if (r := self.require_login()):
+                content = (form.get("content", [""])[0] or "").strip()
+                if content:
+                    with connect() as conn:
+                        conn.execute(
+                            "insert into feedback (rater_id, content, created_at) values (?, ?, ?)",
+                            (r, content, now_iso()),
+                        )
+                self.send_html(render_done(r).replace("可选反馈", "感谢您的反馈！"))
         elif path == "/admin/import":
             if not is_admin(self.rater_id()):
                 self.send_error(403, "Admin only")
