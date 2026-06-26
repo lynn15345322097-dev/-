@@ -89,3 +89,13 @@ export const BLIND_MODEL_LABELS: Record<string, string> = {
   M02: "Model_B",
   M03: "Model_C",
 };
+
+export function getPreviewImageUrl(publicUrl: string): string {
+  if (!publicUrl) return "";
+  const renderUrl = publicUrl.replace(
+    "/storage/v1/object/public/",
+    "/storage/v1/render/image/public/"
+  );
+  const separator = renderUrl.includes("?") ? "&" : "?";
+  return `${renderUrl}${separator}width=960&quality=75`;
+}

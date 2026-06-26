@@ -39,6 +39,15 @@ const DIMENSIONS = [
   },
 ];
 
+type RateItem = {
+  image_id: string;
+  target_style: string;
+  prompt_level: string;
+  prompt_text: string;
+  expected_elements?: string | null;
+  forbidden_elements?: string | null;
+};
+
 export default function RateClient({
   raterId,
   isAdmin,
@@ -47,34 +56,15 @@ export default function RateClient({
   imageUrl,
   total,
   ratedCount,
-  allItems,
-  ratedIds,
 }: {
   raterId: string;
   isAdmin: boolean;
   done?: boolean;
-  item?: {
-    image_id: string;
-    target_style: string;
-    prompt_level: string;
-    prompt_text: string;
-    expected_elements?: string | null;
-    forbidden_elements?: string | null;
-  };
+  item?: RateItem;
   imageUrl?: string;
   total: number;
   ratedCount: number;
-  allItems: string[];
-  ratedIds: Set<string>;
 }) {
-  const router = useRouter();
-  const [scores, setScores] = useState<Record<string, number>>({});
-  const [comment, setComment] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const [message, setMessage] = useState("");
-
-  const pct = total === 0 ? 0 : Math.round((ratedCount / total) * 100);
-
   if (done) {
     return (
       <div className="min-h-screen">
@@ -97,6 +87,45 @@ export default function RateClient({
   }
 
   if (!item) return null;
+
+  return (
+    <ActiveRate
+      key={item.image_id}
+      raterId={raterId}
+      isAdmin={isAdmin}
+      item={item}
+      imageUrl={imageUrl}
+      total={total}
+      ratedCount={ratedCount}
+    />
+  );
+}
+
+function ActiveRate({
+  raterId,
+  isAdmin,
+  item,
+  imageUrl,
+  total,
+  ratedCount,
+}: {
+  raterId: string;
+  isAdmin: boolean;
+  item: RateItem;
+  imageUrl?: string;
+  total: number;
+  ratedCount: number;
+}) {
+  const router = useRouter();
+  const [scores, setScores] = useState<Record<string, number>>({});
+  const [comment, setComment] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [message, setMessage] = useState("");
+  const [imageStatus, setImageStatus] = useState<"loading" | "loaded" | "error">(
+    imageUrl ? "loading" : "error"
+  );
+
+  const pct = total === 0 ? 0 : Math.round((ratedCount / total) * 100);
 
   const promptText = (item.prompt_text || "")
     .replace(/^生成(一幅|一张|一副|一个)?/, "")
@@ -136,42 +165,6 @@ export default function RateClient({
     <div className="min-h-screen flex flex-col">
       <Nav raterId={raterId} isAdmin={isAdmin} />
       <div className="flex flex-1 flex-col lg:flex-row">
-        {/* Thumbnail sidebar */}
-        <aside className="hidden lg:flex w-64 shrink-0 flex-col border-r border-[#c4c7c7]/25 bg-[#f4f4ef] overflow-y-auto max-h-[calc(100vh-73px)] sticky top-[73px]">
-          <div className="p-4 border-b border-[#c4c7c7]/30">
-            <h3 className="sr-label text-black">评测图片</h3>
-            <p className="sr-label !text-[10px] !tracking-normal mt-2">
-              {ratedCount}/{total} 已评
-            </p>
-          </div>
-          <div className="flex-1 overflow-y-auto p-3 space-y-2">
-            {allItems.map((iid) => {
-              const isRated = ratedIds.has(iid);
-              const isCurrent = iid === item.image_id;
-              return (
-                <a
-                  key={iid}
-                  href={`/rate?image_id=${iid}`}
-                  className={`flex items-center gap-2 px-3 py-2 text-xs border transition-colors ${
-                    isCurrent
-                      ? "border-black bg-[#e3e2e2]"
-                      : isRated
-                      ? "border-[#747878]/35 bg-white/40"
-                      : "border-[#c4c7c7]/30 hover:bg-[#e8e8e3]"
-                  }`}
-                >
-                  <span className="truncate flex-1">{iid}</span>
-                  <span
-                    className={`sr-label !text-[10px] !tracking-normal ${isRated ? "!text-[#1a1c19]" : "!text-[#858383]"}`}
-                  >
-                    {isRated ? "已评" : "未评"}
-                  </span>
-                </a>
-              );
-            })}
-          </div>
-        </aside>
-
         {/* Main */}
         <div className="flex-1 px-4 md:px-8 lg:px-12 py-5 md:py-8 min-w-0">
           <div className="max-w-4xl mx-auto mb-4 border-b border-[#c4c7c7]/30 pb-3">
@@ -186,11 +179,26 @@ export default function RateClient({
           {imageUrl && (
             <section className="max-w-4xl mx-auto mb-5">
               <div className="relative aspect-square md:aspect-[4/3] bg-[#eeeee9] flex items-center justify-center p-2 overflow-hidden">
-              <img
-                src={imageUrl}
-                alt={item.image_id}
-                  className="w-full h-full object-contain bg-white transition-transform duration-700 hover:scale-[1.01]"
-              />
+                {imageStatus === "loading" && (
+                  <div className="absolute inset-2 grid place-items-center bg-white text-[#5e5e5e] text-sm">
+                    图片加载中...
+                  </div>
+                )}
+                {imageStatus === "error" && (
+                  <div className="absolute inset-2 grid place-items-center bg-white text-[#93000a] text-sm">
+                    图片加载失败，请刷新页面
+                  </div>
+                )}
+                <img
+                  key={item.image_id}
+                  src={imageUrl}
+                  alt={item.image_id}
+                  onLoad={() => setImageStatus("loaded")}
+                  onError={() => setImageStatus("error")}
+                  className={`w-full h-full object-contain bg-white transition-transform duration-700 hover:scale-[1.01] ${
+                    imageStatus === "loaded" ? "opacity-100" : "opacity-0"
+                  }`}
+                />
               </div>
             </section>
           )}

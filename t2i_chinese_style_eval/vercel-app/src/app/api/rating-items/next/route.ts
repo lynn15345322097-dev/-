@@ -3,6 +3,7 @@ import { requireLogin } from "@/lib/auth";
 import {
   EVALUATION_SET_ID,
   STORAGE_BUCKET,
+  getPreviewImageUrl,
   getSupabaseAdmin,
 } from "@/lib/supabase";
 
@@ -74,7 +75,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       item: clientItem(item),
-      url,
+      url: getPreviewImageUrl(url),
       prevRating: prev || null,
     });
   }
@@ -106,5 +107,9 @@ export async function GET(request: NextRequest) {
         .data.publicUrl
     : "";
 
-  return NextResponse.json({ item: clientItem(next), url, prevRating: null });
+  return NextResponse.json({
+    item: clientItem(next),
+    url: getPreviewImageUrl(url),
+    prevRating: null,
+  });
 }

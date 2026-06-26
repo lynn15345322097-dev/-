@@ -3,6 +3,7 @@ import { getSession } from "@/lib/auth";
 import {
   EVALUATION_SET_ID,
   STORAGE_BUCKET,
+  getPreviewImageUrl,
   getSupabaseAdmin,
 } from "@/lib/supabase";
 import RateClient from "./RateClient";
@@ -76,8 +77,6 @@ export default async function RatePage() {
         done={true}
         total={total || 0}
         ratedCount={done || 0}
-        allItems={(allItems || []).map((i) => i.image_id)}
-        ratedIds={ratedIds}
       />
     );
   }
@@ -97,8 +96,6 @@ export default async function RatePage() {
         done={true}
         total={total || 0}
         ratedCount={done || 0}
-        allItems={(allItems || []).map((i) => i.image_id)}
-        ratedIds={ratedIds}
       />
     );
   }
@@ -108,17 +105,16 @@ export default async function RatePage() {
         .from(STORAGE_BUCKET)
         .getPublicUrl(item.storage_path).data.publicUrl
     : "";
+  const previewImageUrl = getPreviewImageUrl(imageUrl);
 
   return (
       <RateClient
         raterId={session.raterId}
         isAdmin={session.isAdmin}
         item={clientItem(item)}
-        imageUrl={imageUrl}
+        imageUrl={previewImageUrl}
       total={total || 0}
       ratedCount={done || 0}
-      allItems={(allItems || []).map((i) => i.image_id)}
-      ratedIds={ratedIds}
     />
   );
 }
