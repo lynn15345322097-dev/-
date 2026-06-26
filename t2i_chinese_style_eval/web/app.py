@@ -8,6 +8,7 @@ only rating_items.csv and images/blind/, and writes human_scores.csv/app.db.
 from __future__ import annotations
 
 import csv
+import hashlib
 import html
 import mimetypes
 import os
@@ -30,10 +31,10 @@ HUMAN_SCORES_CSV = DATA_DIR / "human_scores.csv"
 RATINGS_CSV = DATA_DIR / "ratings.csv"
 DB_PATH = WEB_DIR / "app.db"
 
-HOST = "127.0.0.1"
+HOST = os.environ.get("HOST", "0.0.0.0")
 PORT = int(os.environ.get("PORT", "8063"))
 
-ADMIN_IDS: set[str] = set()
+ADMIN_IDS: set[str] = set(os.environ.get("ADMIN_IDS", "").split(",")) - {""}
 
 
 def is_admin(rater_id: str | None) -> bool:
@@ -139,6 +140,7 @@ def init_db() -> None:
             create table if not exists raters (
                 rater_id text primary key,
                 display_name text not null,
+                password_hash text,
                 created_at text not null
             );
             create table if not exists rating_items (
@@ -155,9 +157,9 @@ def init_db() -> None:
                 image_id text not null,
                 rater_id text not null,
                 rated_at text not null,
-                style_fidelity integer not null,
-                element_accuracy integer not null,
-                context_appropriateness integer not null,
+                style_consistency_score integer not null,
+                element_accuracy_score integer not null,
+                error_control_score integer not null,
                 overall_score integer not null,
                 error_tags text,
                 comment text,
@@ -165,6 +167,40 @@ def init_db() -> None:
             );
             """
         )
+        try:
+            conn.execute("alter table raters add column password_hash text")
+        except sqlite3.OperationalError:
+            pass
+        for old_col, new_col in [
+            ("style_fidelity", "style_consistency_score"),
+            ("element_accuracy", "element_accuracy_score"),
+            ("context_appropriateness", "error_control_score"),
+        ]:
+            try:
+                conn.execute(f"alter table human_scores rename column {old_col} to {new_col}")
+            except sqlite3.OperationalError:
+                pass
+    # Pre-seed admin + 10 reviewer accounts
+    seed_raters = [
+        ("LYNN", "123321"),
+    ] + [
+        ("reviewer01", "moping01"),
+        ("reviewer02", "moping02"),
+        ("reviewer03", "moping03"),
+        ("reviewer04", "moping04"),
+        ("reviewer05", "moping05"),
+        ("reviewer06", "moping06"),
+        ("reviewer07", "moping07"),
+        ("reviewer08", "moping08"),
+        ("reviewer09", "moping09"),
+        ("reviewer10", "moping10"),
+    ]
+    with connect() as conn:
+        for rid, pwd in seed_raters:
+            conn.execute(
+                "insert or ignore into raters (rater_id, display_name, password_hash, created_at) values (?, ?, ?, ?)",
+                (rid, rid, hash_password(pwd), now_iso()),
+            )
     import_rating_items()
     export_human_scores()
     export_ratings()
@@ -229,7 +265,7 @@ def export_human_scores() -> None:
         rows = conn.execute(
             """
             select rating_id, image_id, rater_id, rated_at,
-                   style_fidelity, element_accuracy, context_appropriateness,
+                   style_consistency_score, element_accuracy_score, error_control_score,
                    overall_score, error_tags, comment
             from human_scores
             order by rated_at, rater_id, image_id
@@ -243,9 +279,9 @@ def export_human_scores() -> None:
                 "image_id",
                 "rater_id",
                 "rated_at",
-                "style_fidelity",
-                "element_accuracy",
-                "context_appropriateness",
+                "style_consistency_score",
+                "element_accuracy_score",
+                "error_control_score",
                 "overall_score",
                 "error_tags",
                 "comment",
@@ -256,26 +292,27 @@ def export_human_scores() -> None:
 
 
 def export_ratings() -> None:
-    jobs = {}
-    jobs_csv_path = DATA_DIR / "generation_jobs.csv"
-    if jobs_csv_path.exists():
-        with jobs_csv_path.open(newline="", encoding="utf-8") as f:
+    # Build image_id → {job_id, prompt_id, model_id} from metadata.csv
+    meta = {}
+    metadata_csv_path = DATA_DIR / "metadata.csv"
+    if metadata_csv_path.exists():
+        with metadata_csv_path.open(newline="", encoding="utf-8") as f:
             for row in csv.DictReader(f):
-                jid = row.get("job_id")
-                if jid:
-                    jobs[jid] = row
+                iid = row.get("image_id")
+                if iid:
+                    meta[iid] = row
 
     with connect() as conn:
         rows = conn.execute(
             """
             select rating_id, image_id, rater_id, rated_at,
-                   style_fidelity, element_accuracy, context_appropriateness,
+                   style_consistency_score, element_accuracy_score, error_control_score,
                    overall_score, error_tags, comment
             from human_scores
             order by rated_at, rater_id, image_id
             """
         ).fetchall()
-        
+
     with RATINGS_CSV.open("w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
         writer.writerow([
@@ -283,26 +320,26 @@ def export_ratings() -> None:
             "job_id",
             "prompt_id",
             "blind_model_label",
-            "style_fidelity",
-            "element_accuracy",
-            "context_appropriateness",
+            "style_consistency_score",
+            "element_accuracy_score",
+            "error_control_score",
             "overall_score",
             "备注",
             "created_at"
         ])
         for row in rows:
-            job_id = row["image_id"]
-            job_info = jobs.get(job_id, {})
-            prompt_id = job_info.get("prompt_id", "")
-            model_id = job_info.get("model_id", "")
-            
+            info = meta.get(row["image_id"], {})
+            real_job_id = info.get("job_id", "")
+            prompt_id = info.get("prompt_id", "")
+            model_id = info.get("model_id", "")
+
             if model_id == "M01":
                 blind_model_label = "Model_A"
             elif model_id == "M02":
                 blind_model_label = "Model_B"
             else:
                 blind_model_label = f"Model_{model_id}" if model_id else "Unknown"
-                
+
             errors = row["error_tags"]
             comment = row["comment"]
             notes_parts = []
@@ -311,15 +348,15 @@ def export_ratings() -> None:
             if comment:
                 notes_parts.append(f"评语: {comment}")
             notes = " | ".join(notes_parts)
-            
+
             writer.writerow([
                 row["rater_id"],
-                job_id,
+                real_job_id,
                 prompt_id,
                 blind_model_label,
-                row["style_fidelity"],
-                row["element_accuracy"] if row["element_accuracy"] != 0 else "",
-                row["context_appropriateness"] if row["context_appropriateness"] != 0 else "",
+                row["style_consistency_score"],
+                row["element_accuracy_score"] if row["element_accuracy_score"] != 0 else "",
+                row["error_control_score"] if row["error_control_score"] != 0 else "",
                 row["overall_score"] if row["overall_score"] != 0 else "",
                 notes,
                 row["rated_at"]
@@ -359,7 +396,7 @@ def prev_item(rater_id: str) -> sqlite3.Row | None:
     with connect() as conn:
         return conn.execute(
             """
-            select ri.*, hs.style_fidelity, hs.element_accuracy, hs.context_appropriateness, hs.overall_score, hs.comment
+            select ri.*, hs.style_consistency_score, hs.element_accuracy_score, hs.error_control_score, hs.overall_score, hs.comment
             from rating_items ri
             join human_scores hs on ri.image_id = hs.image_id
             where hs.rater_id = ?
@@ -370,6 +407,65 @@ def prev_item(rater_id: str) -> sqlite3.Row | None:
         ).fetchone()
 
 
+def get_item_with_score(image_id: str, rater_id: str) -> sqlite3.Row | None:
+    with connect() as conn:
+        return conn.execute(
+            """
+            select ri.*, hs.style_consistency_score, hs.element_accuracy_score, hs.error_control_score,
+                   hs.overall_score, hs.comment, hs.error_tags as prev_error_tags
+            from rating_items ri
+            left join human_scores hs on ri.image_id = hs.image_id and hs.rater_id = ?
+            where ri.image_id = ?
+            """,
+            (rater_id, image_id),
+        ).fetchone()
+
+
+def hash_password(password: str) -> str:
+    return hashlib.sha256(password.encode("utf-8")).hexdigest()
+
+
+def render_thumbnail_sidebar(rater_id: str, current_image_id: str) -> str:
+    with connect() as conn:
+        items = conn.execute("select image_id from rating_items order by image_id").fetchall()
+        rated_rows = conn.execute(
+            "select image_id from human_scores where rater_id = ?", (rater_id,)
+        ).fetchall()
+    rated_set = {row["image_id"] for row in rated_rows}
+
+    thumbnails = []
+    for item in items:
+        iid = item["image_id"]
+        is_rated = iid in rated_set
+        is_current = iid == current_image_id
+        border = "border-primary" if is_current else ("border-emerald-600/40" if is_rated else "border-outline-variant/30")
+        bg = "bg-surface-container-highest" if is_current else ""
+        status_text = "已评" if is_rated else "未评"
+        status_color = "text-emerald-700" if is_rated else "text-secondary"
+
+        thumbnails.append(
+            f"""<a href="/rate?image_id={esc(iid)}" class="flex items-center gap-2 p-2 rounded {bg} hover:bg-surface-container-highest transition-colors border {border}">
+<div class="w-11 h-11 shrink-0 bg-surface-variant overflow-hidden">
+<img src="/image/{esc(iid)}.png" class="w-full h-full object-cover" loading="lazy" onerror="this.style.display='none'"/>
+</div>
+<div class="flex-1 min-w-0">
+<p class="font-label-sm text-label-sm truncate">{esc(iid)}</p>
+<span class="text-[10px] {status_color}">{status_text}</span>
+</div>
+</a>"""
+        )
+
+    return f"""<aside class="hidden lg:flex h-screen w-56 sticky top-20 flex-col border-r border-outline-variant/20 bg-surface-container-low shrink-0">
+<div class="p-3 border-b border-outline-variant/20">
+<h3 class="font-label-sm text-label-sm text-secondary">评测图片</h3>
+<p class="text-[10px] text-secondary mt-0.5">{len(rated_set)}/{len(items)} 已评</p>
+</div>
+<div class="flex-1 overflow-y-auto p-2 space-y-1">
+{"".join(thumbnails)}
+</div>
+</aside>"""
+
+
 def render_login(error: str = "") -> str:
     page = ref_page("login")
     page = page.replace(
@@ -377,7 +473,7 @@ def render_login(error: str = "") -> str:
         '<form method="post" action="/login" class="space-y-8">',
     )
     page = page.replace('id="reviewer-id" placeholder="请输入审查者编号" type="text"', 'id="reviewer-id" name="rater_id" placeholder="请输入审查者编号" type="text" required')
-    page = page.replace('id="access-token" placeholder="••••••••" type="password"', 'id="access-token" name="password" placeholder="••••••••" type="password"')
+    page = page.replace('id="access-token" placeholder="••••••••" type="password"', 'id="access-token" name="password" placeholder="••••••••" type="password" required')
     page = page.replace('href="#">申请权限</a>', 'href="/login">申请权限</a>')
     page = page.replace('href="#">故障申报</a>', 'href="/login">故障申报</a>')
     page = page.replace('<!-- Micro-interaction Script -->', '<!-- Micro-interaction Script disabled for real form submit -->')
@@ -423,6 +519,15 @@ def render_profile(rater_id: str) -> str:
             '',
         )
 
+    # Clean footer: remove 资源/规范指南/墨迹库/法律/隐私协议/版权声明 links
+    page = re.sub(
+        r'<div class="flex gap-16 font-label-sm text-label-sm">.*?</div>\s*</div>',
+        '</div>',
+        page,
+        count=1,
+        flags=re.DOTALL,
+    )
+
     page = page.replace("</body>", f"""
 <script>
 document.querySelectorAll('button').forEach((button) => {{
@@ -435,8 +540,16 @@ document.querySelectorAll('button').forEach((button) => {{
     return page
 
 
-def render_done() -> str:
+def render_done(rater_id: str = "") -> str:
     page = ref_page("rate")
+    # Replace left sidebar with thumbnail list
+    page = re.sub(
+        r'<aside class="hidden md:flex h-screen w-64 sticky top-20.*?</aside>',
+        render_thumbnail_sidebar(rater_id, ""),
+        page,
+        count=1,
+        flags=re.DOTALL,
+    )
     page = page.replace("High-Dynasty Ink Landscape (宋代水墨山水)", "评分已完成")
     page = page.replace('"Mountains shrouded in mist, lone pine on the ridge, distant boats on silent water, expressive brushwork."', "当前没有未评分图像。")
     page = page.replace("Apply Seal / 落款评定", "Return / 返回主页")
@@ -446,9 +559,9 @@ def render_done() -> str:
 
 def replace_radio_names(page: str, prefilled_scores: dict[str, int] | None = None) -> str:
     mapping = {
-        "style": "style_fidelity",
-        "accuracy": "element_accuracy",
-        "propriety": "context_appropriateness",
+        "style": "style_consistency_score",
+        "accuracy": "element_accuracy_score",
+        "propriety": "error_control_score",
         "overall": "overall_score",
     }
     page = page.replace(" checked=\"\"", "")
@@ -474,26 +587,58 @@ def render_error_checklist() -> str:
     )
 
 
-def render_rate(rater_id: str, message: str = "", show_prev: bool = False) -> str:
+def render_rate(rater_id: str, message: str = "", show_prev: bool = False, image_id: str | None = None) -> str:
+    is_rated = False
+    rated_error_tags: list[str] = []
+
     if show_prev:
         item = prev_item(rater_id)
         if item is None:
             item = next_item(rater_id)
             show_prev = False
+    elif image_id:
+        item = get_item_with_score(image_id, rater_id)
+        if item is None:
+            item = next_item(rater_id)
+        elif item["style_consistency_score"] is not None:
+            is_rated = True
+            if item["prev_error_tags"]:
+                rated_error_tags = [t.strip() for t in item["prev_error_tags"].split("；") if t.strip()]
     else:
         item = next_item(rater_id)
 
     if item is None:
-        return render_done()
+        return render_done(rater_id)
 
+    current_image_id = item["image_id"]
     page = ref_page("rate")
-    image_src = f"/image/{esc(item['image_id'])}.png"
+    image_src = f"/image/{esc(current_image_id)}.png"
+
+    # Replace left sidebar with thumbnail list
+    page = re.sub(
+        r'<aside class="hidden md:flex h-screen w-64 sticky top-20.*?</aside>',
+        render_thumbnail_sidebar(rater_id, current_image_id),
+        page,
+        count=1,
+        flags=re.DOTALL,
+    )
+
     page = page.replace("Inspector 01", esc(rater_id))
-    
-    header_style_text = f"{esc(item['target_style'])} · {esc(item['prompt_level'])} · {esc(item['image_id'])}"
+
+    header_style_text = f"{esc(item['target_style'])} · {esc(item['prompt_level'])} · {esc(current_image_id)}"
     if show_prev:
         header_style_text += " (正在修改上一张已评分图片)"
-    page = page.replace("High-Dynasty Ink Landscape (宋代水墨山水)", header_style_text)
+    elif is_rated:
+        header_style_text += " (已评分，可修改)"
+
+    # Replace the entire Content Header Area with a minimal single-line header
+    page = re.sub(
+        r'<!-- Content Header Area -->.*?</div>\s*</div>',
+        f'<!-- Content Header Area --><div class="max-w-4xl mx-auto mb-4 border-b border-outline-variant/30 pb-3"><span class="font-label-sm text-label-sm text-secondary uppercase tracking-widest mb-1 block">Target Style / 目标风格</span><h2 class="font-headline-md text-headline-md">{header_style_text}</h2></div>',
+        page,
+        count=1,
+        flags=re.DOTALL,
+    )
 
     prompt_raw = item["prompt_text"] or ""
     prompt_raw = prompt_raw.strip().strip('"').strip("'")
@@ -503,29 +648,47 @@ def render_rate(rater_id: str, message: str = "", show_prev: bool = False) -> st
             break
     prompt_text = prompt_raw.strip()
 
-    prompt_context = f'{esc(prompt_text)}'
-    page = page.replace('"Mountains shrouded in mist, lone pine on the ridge, distant boats on silent water, expressive brushwork."', prompt_context)
     page = page.replace(
         'src="https://lh3.googleusercontent.com/aida-public/AB6AXuBleeff-Ofj14uKDDtSIqCjnAZkHlxT8cOPI1ueeJOIbGN_5tVFatJMwRytlB_MADW3S6NQrpxyDtbu9dBogXaLm_coFnle7UMkC14J_JJwzEq-kWv2jdlq6uY2V1UyqbTH1p_0qJJN-mc34w213OwossAsFOAZH6F0rNtGuzVWWjX7PrPKwx6a3Q5TOipMht_B3xDEKUeTKo-I9qW-yPjMd0WkGJItT-Ws71DQ3UurW81ejjeI4FItVOTTKmOGJUSeq6oFQvmYI4Y"',
-        f'src="{image_src}" onerror="this.alt=\'Image not available: {esc(item["image_id"])}.png\'"',
+        f'src="{image_src}" onerror="this.alt=\'Image not available: {esc(current_image_id)}.png\'"',
     )
-    page = page.replace('<form class="flex flex-col gap-12" id="ratingForm">', f'<form class="flex flex-col gap-12" id="ratingForm" method="post" action="/rate"><input type="hidden" name="image_id" value="{esc(item["image_id"])}">')
+    page = page.replace('<form class="flex flex-col gap-12" id="ratingForm">', f'<form class="flex flex-col gap-12" id="ratingForm" method="post" action="/rate"><input type="hidden" name="image_id" value="{esc(current_image_id)}">')
 
     prefilled = None
-    if show_prev:
+    if show_prev or is_rated:
         prefilled = {
-            "style_fidelity": item["style_fidelity"],
-            "element_accuracy": item["element_accuracy"],
-            "context_appropriateness": item["context_appropriateness"],
+            "style_consistency_score": item["style_consistency_score"],
+            "element_accuracy_score": item["element_accuracy_score"],
+            "error_control_score": item["error_control_score"],
             "overall_score": item["overall_score"],
         }
     page = replace_radio_names(page, prefilled)
-    page = page.replace("Accuracy / 意境准确性", "Accuracy / 元素准确性")
-    page = page.replace("Propriety / 笔墨得体", "Propriety / 语境得体")
-    page = page.replace("Overall / 综合感官", "Overall / 整体评分")
 
-    comment_val = esc(item["comment"]) if show_prev else ""
+    # Inject prompt reminder into right sidebar so reviewers don't need to scroll up
+    prompt_reminder = f"""<div class="mb-4 p-3 bg-surface-container-high border border-outline-variant/30 rounded-sm">
+<p class="font-label-sm text-label-sm text-secondary mb-1">目标风格</p>
+<p class="font-body-md font-semibold mb-2">{esc(item['target_style'])} · {esc(item['prompt_level'])}</p>
+<p class="font-label-sm text-label-sm text-secondary mb-1">提示词</p>
+<p class="font-body-md text-body-md italic text-on-surface-variant">{esc(prompt_text)}</p>
+</div>"""
+    page = page.replace("__PROMPT_REMINDER__", prompt_reminder)
+
+    p = progress_for(rater_id)
+    pct = 0 if p["total"] == 0 else round(p["done"] / p["total"] * 100)
+    page = page.replace("__REVIEWER_STATUS__", f"评审进度 {p['done']}/{p['total']} ({pct}%)")
+
+    comment_val = ""
+    if show_prev or is_rated:
+        comment_val = esc(item["comment"] or "")
     page = page.replace("__COMMENT_VALUE__", comment_val)
+
+    # Pre-check error tags if revisiting a rated image
+    if rated_error_tags:
+        for tag in rated_error_tags:
+            page = page.replace(
+                f'value="{esc(tag)}" type="checkbox"',
+                f'value="{esc(tag)}" type="checkbox" checked',
+            )
 
     has_prev_item = prev_item(rater_id) is not None
     if show_prev:
@@ -546,8 +709,16 @@ def render_rate(rater_id: str, message: str = "", show_prev: bool = False) -> st
         "document.getElementById('ratingForm').addEventListener('submit', (e) => {",
         "document.getElementById('ratingForm').addEventListener('submit', (e) => {\n            return true;\n        });\n        document.getElementById('ratingForm_unused')?.addEventListener('submit', (e) => {",
     )
-    page = page.replace('href="#">Dashboard</a>', 'href="/profile">Dashboard</a>')
-    page = page.replace('href="#">Gallery</a>', 'href="/rate">Gallery</a>')
+
+    # Fix nav: on rate page, Gallery should be the active link
+    page = page.replace(
+        '<a class="text-primary dark:text-primary border-b-2 border-primary pb-1 cursor-pointer active:opacity-70 transition-opacity" href="#">Dashboard</a>',
+        '<a class="text-on-surface-variant dark:text-on-surface-variant hover:text-primary dark:hover:text-primary transition-colors duration-300" href="/profile">Dashboard</a>',
+    )
+    page = page.replace(
+        '<a class="text-on-surface-variant dark:text-on-surface-variant hover:text-primary dark:hover:text-primary transition-colors duration-300" href="#">Gallery</a>',
+        '<a class="text-primary dark:text-primary border-b-2 border-primary pb-1 cursor-pointer active:opacity-70 transition-opacity" href="/rate">Gallery</a>',
+    )
     if is_admin(rater_id):
         page = page.replace('href="#">Archive</a>', 'href="/admin">Archive</a>')
     else:
@@ -567,9 +738,20 @@ def render_admin(rater_id: str | None, imported: int | None = None) -> str:
     page = page.replace("监控当前评分进程，分析评审质量与进度，管理核心数据流转。", f"监控当前评分进程。Items {p['total']} · Scores {p['done']} · Raters {p['raters']}。")
     if imported is not None:
         page = page.replace("评分管理概览", f"评分管理概览 · Imported {imported}")
-    page = page.replace('href="#">Dashboard</a>', 'href="/profile">Dashboard</a>')
-    page = page.replace('href="#">Gallery</a>', 'href="/rate">Gallery</a>')
-    page = page.replace('href="#">Archive</a>', 'href="/admin">Archive</a>')
+
+    # Fix nav: on admin page, Archive should be the active link
+    page = page.replace(
+        '<a class="font-body-md text-primary border-b-2 border-primary pb-1 transition-colors duration-300" href="#">Dashboard</a>',
+        '<a class="font-body-md text-on-surface-variant hover:text-primary transition-colors duration-300" href="/profile">Dashboard</a>',
+    )
+    page = page.replace(
+        '<a class="font-body-md text-on-surface-variant hover:text-primary transition-colors duration-300" href="#">Gallery</a>',
+        '<a class="font-body-md text-on-surface-variant hover:text-primary transition-colors duration-300" href="/rate">Gallery</a>',
+    )
+    page = page.replace(
+        '<a class="font-body-md text-on-surface-variant hover:text-primary transition-colors duration-300" href="#">Archive</a>',
+        '<a class="font-body-md text-primary border-b-2 border-primary pb-1 transition-colors duration-300" href="/admin">Archive</a>',
+    )
     page = page.replace("</body>", """
 <script>
 document.querySelectorAll('button').forEach((button) => {
@@ -592,20 +774,24 @@ class App(BaseHTTPRequestHandler):
         morsel = jar.get("rater_id")
         return morsel.value if morsel else None
 
-    def send_html(self, body: str, status: int = 200, headers: dict[str, str] | None = None) -> None:
+    def send_html(self, body: str, status: int = 200, headers: dict[str, str] | None = None, set_cookie: str | None = None) -> None:
         body = localize_zh(body)
         data = body.encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", "text/html; charset=utf-8")
         self.send_header("Content-Length", str(len(data)))
+        if set_cookie:
+            self.send_header("Set-Cookie", set_cookie)
         for k, v in (headers or {}).items():
             self.send_header(k, v)
         self.end_headers()
         self.wfile.write(data)
 
-    def redirect(self, location: str, headers: dict[str, str] | None = None) -> None:
+    def redirect(self, location: str, headers: dict[str, str] | None = None, set_cookies: list[str] | None = None) -> None:
         self.send_response(303)
         self.send_header("Location", location)
+        for c in (set_cookies or []):
+            self.send_header("Set-Cookie", c)
         for k, v in (headers or {}).items():
             self.send_header(k, v)
         self.end_headers()
@@ -629,7 +815,10 @@ class App(BaseHTTPRequestHandler):
         elif path == "/login":
             self.send_html(render_login())
         elif path == "/logout":
-            self.redirect("/login", {"Set-Cookie": "rater_id=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax"})
+            self.redirect("/login", set_cookies=[
+                "rater_id=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax",
+                "current_image_id=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax",
+            ])
         elif path == "/profile":
             if (r := self.require_login()):
                 self.send_html(render_profile(r))
@@ -637,7 +826,42 @@ class App(BaseHTTPRequestHandler):
             if (r := self.require_login()):
                 query = parse_qs(urlparse(self.path).query)
                 show_prev = "prev" in query
-                self.send_html(render_rate(r, show_prev=show_prev))
+                req_image_id = (query.get("image_id", [""])[0] or "").strip() or None
+                cookie_jar = cookies.SimpleCookie(self.headers.get("Cookie", ""))
+                cookie_image_id = (cookie_jar.get("current_image_id").value if cookie_jar.get("current_image_id") else None)
+
+                # Priority: explicit image_id param > cookie (unrated only) > random next
+                message = ""
+                target_image_id = None
+
+                if show_prev:
+                    target_image_id = None
+                elif req_image_id:
+                    target_image_id = req_image_id
+                    if get_item_with_score(req_image_id, r) is None:
+                        message = f"图片 {req_image_id} 不存在，已切换至下一张。"
+                        target_image_id = None
+                elif cookie_image_id:
+                    check = get_item_with_score(cookie_image_id, r)
+                    if check and check["style_consistency_score"] is None:
+                        target_image_id = cookie_image_id
+
+                set_cookie = None
+                if not show_prev:
+                    item = None
+                    if target_image_id:
+                        item = get_item_with_score(target_image_id, r)
+                    if item is None:
+                        item = next_item(r)
+                    if item:
+                        c = cookies.SimpleCookie()
+                        c["current_image_id"] = item["image_id"]
+                        c["current_image_id"]["path"] = "/"
+                        c["current_image_id"]["httponly"] = True
+                        c["current_image_id"]["samesite"] = "Lax"
+                        set_cookie = c.output(header="").strip()
+
+                self.send_html(render_rate(r, message=message, show_prev=show_prev, image_id=target_image_id), set_cookie=set_cookie)
         elif path == "/admin":
             if not is_admin(rater):
                 self.send_error(403, "Admin only")
@@ -666,20 +890,29 @@ class App(BaseHTTPRequestHandler):
         form = self.read_form()
         if path == "/login":
             rater_id = (form.get("rater_id", [""])[0] or "").strip()
+            password = (form.get("password", [""])[0] or "").strip()
             if not rater_id:
-                self.send_html(render_login("Reviewer ID 不能为空"), 400)
+                self.send_html(render_login("评审者编号不能为空"), 400)
+                return
+            if not password:
+                self.send_html(render_login("通行令牌不能为空"), 400)
                 return
             with connect() as conn:
-                conn.execute(
-                    "insert or ignore into raters (rater_id, display_name, created_at) values (?, ?, ?)",
-                    (rater_id, rater_id, now_iso()),
-                )
-            jar = cookies.SimpleCookie()
-            jar["rater_id"] = rater_id
-            jar["rater_id"]["path"] = "/"
-            jar["rater_id"]["httponly"] = True
-            jar["rater_id"]["samesite"] = "Lax"
-            self.redirect("/profile", {"Set-Cookie": jar.output(header="").strip()})
+                row = conn.execute(
+                    "select password_hash from raters where rater_id = ?", (rater_id,)
+                ).fetchone()
+                if not row:
+                    self.send_html(render_login("评审者编号不存在"), 401)
+                    return
+                if not row["password_hash"] or hash_password(password) != row["password_hash"]:
+                    self.send_html(render_login("通行令牌错误"), 401)
+                    return
+            cookie_jar = cookies.SimpleCookie()
+            cookie_jar["rater_id"] = rater_id
+            cookie_jar["rater_id"]["path"] = "/"
+            cookie_jar["rater_id"]["httponly"] = True
+            cookie_jar["rater_id"]["samesite"] = "Lax"
+            self.redirect("/profile", set_cookies=[cookie_jar.output(header="").strip()])
         elif path == "/rate":
             if (r := self.require_login()):
                 self.submit_rating(r, form)
@@ -694,9 +927,9 @@ class App(BaseHTTPRequestHandler):
     def submit_rating(self, rater_id: str, form: dict[str, list[str]]) -> None:
         image_id = (form.get("image_id", [""])[0] or "").strip()
         field_names = [
-            "style_fidelity",
-            "element_accuracy",
-            "context_appropriateness",
+            "style_consistency_score",
+            "element_accuracy_score",
+            "error_control_score",
             "overall_score",
         ]
         values: dict[str, int] = {}
@@ -713,14 +946,14 @@ class App(BaseHTTPRequestHandler):
                     """
                     insert into human_scores (
                         rating_id, image_id, rater_id, rated_at,
-                        style_fidelity, element_accuracy, context_appropriateness,
+                        style_consistency_score, element_accuracy_score, error_control_score,
                         overall_score, error_tags, comment
                     ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     on conflict(image_id, rater_id) do update set
                         rated_at=excluded.rated_at,
-                        style_fidelity=excluded.style_fidelity,
-                        element_accuracy=excluded.element_accuracy,
-                        context_appropriateness=excluded.context_appropriateness,
+                        style_consistency_score=excluded.style_consistency_score,
+                        element_accuracy_score=excluded.element_accuracy_score,
+                        error_control_score=excluded.error_control_score,
                         overall_score=excluded.overall_score,
                         error_tags=excluded.error_tags,
                         comment=excluded.comment
@@ -730,9 +963,9 @@ class App(BaseHTTPRequestHandler):
                         image_id,
                         rater_id,
                         now_iso(),
-                        values["style_fidelity"],
-                        values["element_accuracy"],
-                        values["context_appropriateness"],
+                        values["style_consistency_score"],
+                        values["element_accuracy_score"],
+                        values["error_control_score"],
                         values["overall_score"],
                         "；".join(form.get("error_tags", [])),
                         (form.get("comment", [""])[0] or "").strip(),

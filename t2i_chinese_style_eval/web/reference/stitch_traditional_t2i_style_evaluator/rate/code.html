@@ -143,22 +143,22 @@
 <body class="font-body-md text-body-md overflow-x-hidden min-h-screen">
 <!-- TopNavBar Cluster -->
 <header class="w-full top-0 sticky bg-surface dark:bg-surface border-b border-outline-variant/30 dark:border-outline-variant/10 z-50">
-<div class="flex justify-between items-center px-margin-desktop py-4 w-full max-w-container-max mx-auto">
-<div class="flex items-center gap-12">
-<h1 class="font-display-lg text-display-lg text-primary dark:text-primary tracking-tighter">SumiRate</h1>
-<nav class="hidden md:flex gap-8 items-center font-body-md text-body-md">
+<div class="flex justify-between items-center px-4 md:px-8 lg:px-margin-desktop py-3 md:py-4 w-full max-w-container-max mx-auto">
+<div class="flex items-center gap-4 md:gap-12">
+<h1 class="text-[24px] md:text-[32px] lg:text-display-lg font-display-lg text-primary dark:text-primary tracking-tighter">SumiRate</h1>
+<nav class="hidden md:flex gap-6 lg:gap-8 items-center font-body-md text-body-md">
 <a class="text-primary dark:text-primary border-b-2 border-primary pb-1 cursor-pointer active:opacity-70 transition-opacity" href="#">Dashboard</a>
 <a class="text-on-surface-variant dark:text-on-surface-variant hover:text-primary dark:hover:text-primary transition-colors duration-300" href="#">Gallery</a>
 <a class="text-on-surface-variant dark:text-on-surface-variant hover:text-primary dark:hover:text-primary transition-colors duration-300" href="#">Archive</a>
 </nav>
 </div>
-<div class="flex items-center gap-6">
-<button class="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors">Reviewer Status</button>
-<button class="font-body-md text-body-md text-primary font-semibold hover:opacity-70 transition-opacity">Logout</button>
+<div class="flex items-center gap-3 md:gap-6">
+<span class="text-xs md:text-body-md text-on-surface-variant">__REVIEWER_STATUS__</span>
+<button class="text-xs md:text-body-md text-primary font-semibold hover:opacity-70 transition-opacity">Logout</button>
 </div>
 </div>
 </header>
-<main class="flex min-h-[calc(100vh-80px)]">
+<main class="flex flex-col lg:flex-row min-h-[calc(100vh-80px)]">
 <!-- SideNav: Inspector Context -->
 <aside class="hidden md:flex h-screen w-64 sticky top-20 flex-col gap-unit py-margin-desktop px-4 border-r border-outline-variant/20 bg-surface-container-low dark:bg-surface-container-low">
 <div class="mb-12">
@@ -194,9 +194,9 @@
 </div>
 </aside>
 <!-- Main Content Canvas -->
-<div class="flex-1 px-margin-desktop py-8 relative overflow-hidden">
+<div class="flex-1 px-4 md:px-8 lg:px-margin-desktop py-4 md:py-8 relative overflow-hidden min-w-0">
 <!-- Content Header Area -->
-<div class="max-w-4xl mx-auto mb-16 grid grid-cols-1 md:grid-cols-2 gap-12 border-b border-outline-variant/30 pb-12">
+<div class="max-w-4xl mx-auto mb-4 grid grid-cols-1 md:grid-cols-2 gap-8 border-b border-outline-variant/30 pb-3">
 <div>
 <span class="font-label-sm text-label-sm text-secondary uppercase tracking-widest mb-2 block">Target Style / 目标风格</span>
 <h2 class="font-headline-md text-headline-md">High-Dynasty Ink Landscape (宋代水墨山水)</h2>
@@ -208,12 +208,12 @@
 </div>
 <!-- Image Inspection Area -->
 <section class="max-w-4xl mx-auto relative group">
-<div class="relative aspect-square md:aspect-[4/3] bg-surface-container flex items-center justify-center p-8 overflow-hidden bg-white">
+<div class="relative aspect-square md:aspect-[4/3] bg-surface-container flex items-center justify-center p-2 overflow-hidden bg-white">
 <img class="w-full h-full object-contain transition-transform duration-700 group-hover:scale-[1.02]" data-alt="A sublime and atmospheric Chinese ink wash painting featuring a grand mountain range disappearing into a soft white mist. In the foreground, a gnarled, weathered pine tree stands heroically on a rocky outcropping, rendered with bold, jagged black ink strokes. The lighting is ethereal and diffused, creating a serene, high-key minimalist aesthetic with deep black ink contrasts. The composition follows traditional landscape scrolls, emphasizing empty space and spiritual tranquility in a modern light-mode UI context." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBleeff-Ofj14uKDDtSIqCjnAZkHlxT8cOPI1ueeJOIbGN_5tVFatJMwRytlB_MADW3S6NQrpxyDtbu9dBogXaLm_coFnle7UMkC14J_JJwzEq-kWv2jdlq6uY2V1UyqbTH1p_0qJJN-mc34w213OwossAsFOAZH6F0rNtGuzVWWjX7PrPKwx6a3Q5TOipMht_B3xDEKUeTKo-I9qW-yPjMd0WkGJItT-Ws71DQ3UurW81ejjeI4FItVOTTKmOGJUSeq6oFQvmYI4Y"/>
 </div>
 </section>
 <!-- Action Buttons Footer -->
-<div class="max-w-4xl mx-auto mt-16 flex justify-between items-center">
+<div class="max-w-4xl mx-auto mt-4 flex justify-between items-center">
 <button class="flex items-center gap-2 text-secondary hover:text-primary transition-colors" type="button" onclick="location.href='/profile'">
 <span class="material-symbols-outlined">arrow_back</span>
 <span class="font-label-sm">Return to Studio / 返回工作室</span>
@@ -224,15 +224,16 @@ __PREV_BUTTON__
 </div>
 </div>
 <!-- Right Rating Sidebar -->
-<aside class="w-[400px] bg-surface-container-low/50 border-l border-outline-variant/20 p-8 h-screen sticky top-0 overflow-y-auto">
-<h3 class="font-headline-md text-headline-md mb-12 border-b border-primary/10 pb-4">Rating Form / 评审表</h3>
+<aside class="w-full lg:w-[400px] bg-surface-container-low/50 border-t lg:border-t-0 lg:border-l border-outline-variant/20 p-4 md:p-8 lg:h-screen lg:sticky lg:top-0 overflow-y-auto">
+__PROMPT_REMINDER__
+<h3 class="font-headline-md text-headline-md mb-6 border-b border-primary/10 pb-4">Rating Form / 评审表</h3>
 <form class="flex flex-col gap-12" id="ratingForm">
 <!-- Numeric Scales -->
 <div class="space-y-10">
 <!-- Style Consistency -->
 <div class="group">
 <label class="flex justify-between items-end mb-4">
-<span><span class="font-body-md font-semibold">形式风格一致性</span><span class="block text-xs text-secondary mt-1 font-normal">图像是否符合目标传统风格。</span></span>
+<span><span class="font-body-md font-semibold">形式风格一致性</span><span class="block text-xs text-secondary mt-1 font-normal">图像整体是否符合目标传统视觉风格。请重点判断风格特征，不要只根据图像精致度、清晰度或个人审美喜好评分。</span></span>
 </label>
 <div class="flex justify-between gap-2">
 <input class="hidden rating-input" id="s1" name="style" type="radio"/><label class="flex-1 h-10 border border-outline flex items-center justify-center cursor-pointer hover:bg-surface-container-highest transition-colors font-label-sm" for="s1">1</label>
@@ -245,7 +246,7 @@ __PREV_BUTTON__
 <!-- Cultural Object Accuracy -->
 <div class="group">
 <label class="flex justify-between items-end mb-4">
-<span><span class="font-body-md font-semibold">文化对象准确性</span><span class="block text-xs text-secondary mt-1 font-normal">图像是否生成了提示词指定的对象和关键元素。</span></span>
+<span><span class="font-body-md font-semibold">对象元素准确性</span><span class="block text-xs text-secondary mt-1 font-normal">图像是否准确呈现提示词要求的主要对象和关键元素。请重点判断"该有的东西是否出现、是否清楚、是否符合要求"。</span></span>
 </label>
 <div class="flex justify-between gap-2">
 <input class="hidden rating-input" id="a1" name="accuracy" type="radio"/><label class="flex-1 h-10 border border-outline flex items-center justify-center cursor-pointer hover:bg-surface-container-highest transition-colors font-label-sm" for="a1">1</label>
@@ -258,7 +259,7 @@ __PREV_BUTTON__
 <!-- Obvious Error Control -->
 <div class="group">
 <label class="flex justify-between items-end mb-4">
-<span><span class="font-body-md font-semibold">明显错误控制</span><span class="block text-xs text-secondary mt-1 font-normal">是否出现西式元素、游戏角色、赛博光效等明显跑偏。</span></span>
+<span><span class="font-body-md font-semibold">干扰元素规避程度</span><span class="block text-xs text-secondary mt-1 font-normal">图像是否避免了与任务不匹配、喧宾夺主或造成风格偏移的元素。<span class="text-error">分数越高，表示越好地规避了这类干扰元素。</span>此类元素包括现代建筑、赛博光效、写实摄影、西方骑士、超级英雄、随机彩色面具等明显<span class="text-error">不当元素</span>，也包括不服务于当前任务、并导致图像偏离目标风格的<span class="text-error">泛中国元素</span>，如花鸟装饰、宫廷人物、仙侠元素等。</span></span>
 </label>
 <div class="flex justify-between gap-2">
 <input class="hidden rating-input" id="p1" name="propriety" type="radio"/><label class="flex-1 h-10 border border-outline flex items-center justify-center cursor-pointer hover:bg-surface-container-highest transition-colors font-label-sm" for="p1">1</label>
@@ -271,7 +272,7 @@ __PREV_BUTTON__
 <!-- Overall Score -->
 <div class="group">
 <label class="flex justify-between items-end mb-4">
-<span><span class="font-body-md font-semibold">整体评分</span><span class="block text-xs text-secondary mt-1 font-normal">综合判断这张图是否符合本次任务。</span></span>
+<span><span class="font-body-md font-semibold">整体评分</span><span class="block text-xs text-secondary mt-1 font-normal">综合前三项判断本次生成任务的完成度。请同时考虑风格是否一致、对象是否准确、是否存在干扰元素，而不是只按图像好看程度或个人偏好评分。</span></span>
 </label>
 <div class="flex justify-between gap-2">
 <input class="hidden rating-input" id="o1" name="overall" type="radio"/><label class="flex-1 h-10 border border-outline flex items-center justify-center cursor-pointer hover:bg-surface-container-highest transition-colors font-label-sm" for="o1">1</label>

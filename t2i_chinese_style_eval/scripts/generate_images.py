@@ -2,7 +2,8 @@
 
 模式：
   --dry-run   只打印将要执行的 job 与预估成本，不调 API、不写文件
-  --execute   真实调用 API；当前支持 M01（OpenAI gpt-image-2）和 M02（DashScope wan2.7-image-pro）
+  --execute   真实调用 API；当前支持 M01（OpenAI gpt-image-2）、M02（DashScope wan2.7-image-pro）
+              和 M03（Volcengine Jimeng T2I 3.1）
 
 CLI 组合：
   --execute --job-id Jxxxx         单 job 执行
@@ -31,12 +32,15 @@ from __future__ import annotations
 import argparse
 import base64
 import csv
+import hashlib
+import hmac
 import json
 import os
 import random
 import sys
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
@@ -65,17 +69,19 @@ MAX_RETRIES_PER_JOB = 2  # 不含首次，总尝试 3 次
 RETRY_BACKOFFS_SEC = [5, 15]  # 第 1 / 第 2 次重试前等待
 
 # 每模型每张图的预估成本（人民币元）；用于 dry-run 提示
-COST_PER_IMAGE_CNY = {"M01": 1.50, "M02": 0.60}
+COST_PER_IMAGE_CNY = {"M01": 1.50, "M02": 0.60, "M03": 0.0}
 
-# OpenAI / DashScope 错误码中表示安全策略拦截的关键词
+# OpenAI / DashScope / Volcengine 错误码中表示安全策略拦截的关键词
 SAFETY_ERROR_HINTS = ("DataInspection", "InvalidContent", "InappropriateContent",
                       "RiskInput", "content_policy", "policy_violation",
-                      "moderation_blocked", "safety", "禁止")
+                      "moderation_blocked", "safety", "risk not pass", "禁止")
 
 # 永不重试的错误码（明确的客户端错误）
 NON_RETRYABLE_ERROR_CODES = ("InvalidParameter", "InvalidApiKey", "missing_api_key",
                              "unknown_model", "unsupported_model", "not_implemented",
-                             "parse_response_error", "download_failed", "save_image_failed")
+                             "parse_response_error", "download_failed", "save_image_failed",
+                             "50400", "50411", "50412", "50413", "50512", "50518",
+                             "50520", "50521", "50522")
 
 
 # ------------------------------------------------------------------
@@ -440,6 +446,281 @@ def _looks_like_safety(code: str, msg: str) -> bool:
 
 
 # ------------------------------------------------------------------
+# M03 调用：Volcengine Jimeng T2I 3.1
+# ------------------------------------------------------------------
+
+VOLC_REGION = "cn-north-1"
+VOLC_SERVICE = "cv"
+VOLC_REQ_KEY = "jimeng_t2i_v31"
+VOLC_SUBMIT_ACTION = "CVSync2AsyncSubmitTask"
+VOLC_RESULT_ACTION = "CVSync2AsyncGetResult"
+VOLC_VERSION = "2022-08-31"
+
+# 文档中明确为输入风险或版权风险，重发同 prompt 没意义。
+VOLC_SAFETY_BLOCK_CODES = {"50411", "50412", "50413", "50512", "50518"}
+
+
+def call_m03(job: dict, model_row: dict) -> dict:
+    """调用火山引擎文生图 3.1。返回回填字段字典；不抛异常。"""
+    access_key = os.environ.get("VOLC_ACCESS_KEY_ID", "")
+    secret_key = os.environ.get("VOLC_SECRET_ACCESS_KEY", "")
+    if not access_key or not secret_key:
+        return {
+            "status": "failed",
+            "error_code": "missing_api_key",
+            "error_message": "VOLC_ACCESS_KEY_ID / VOLC_SECRET_ACCESS_KEY 未设置",
+        }
+
+    try:
+        default_params = json.loads(model_row.get("default_params") or "{}")
+    except json.JSONDecodeError:
+        default_params = {}
+
+    seed = random.randint(1, 2**31 - 1)
+    payload = {
+        "req_key": model_row.get("model_version") or VOLC_REQ_KEY,
+        "prompt": job["original_prompt"],
+        "use_pre_llm": bool(default_params.get("use_pre_llm", False)),
+        "seed": seed,
+        "width": int(default_params.get("width", 1328)),
+        "height": int(default_params.get("height", 1328)),
+    }
+
+    start = time.time()
+    submit = _volc_post_json(
+        endpoint=model_row.get("api_endpoint") or "https://visual.volcengineapi.com",
+        action=VOLC_SUBMIT_ACTION,
+        payload=payload,
+        access_key=access_key,
+        secret_key=secret_key,
+    )
+    if submit.get("error"):
+        return _volc_error_to_result(submit, seed)
+
+    try:
+        task_id = submit["data"]["data"]["task_id"]
+    except Exception as e:
+        return {
+            "status": "failed",
+            "seed": str(seed),
+            "error_code": "parse_response_error",
+            "error_message": f"无法从提交响应提取 task_id: {e}"[:300],
+        }
+
+    result_payload = {
+        "req_key": model_row.get("model_version") or VOLC_REQ_KEY,
+        "task_id": task_id,
+        "req_json": json.dumps({
+            "return_url": True,
+            "logo_info": {"add_logo": False},
+        }, ensure_ascii=False, separators=(",", ":")),
+    }
+
+    while True:
+        elapsed = time.time() - start
+        if elapsed > TIMEOUT_SEC:
+            return {
+                "status": "timeout",
+                "seed": str(seed),
+                "timeout_sec": str(TIMEOUT_SEC),
+                "error_code": "polling_timeout",
+                "error_message": f"task {task_id} 在 {TIMEOUT_SEC}s 内未完成",
+            }
+
+        time.sleep(POLL_INTERVAL_SEC)
+        fetched = _volc_post_json(
+            endpoint=model_row.get("api_endpoint") or "https://visual.volcengineapi.com",
+            action=VOLC_RESULT_ACTION,
+            payload=result_payload,
+            access_key=access_key,
+            secret_key=secret_key,
+        )
+        if fetched.get("error"):
+            return _volc_error_to_result(fetched, seed)
+
+        data = fetched["data"].get("data") or {}
+        task_status = data.get("status", "")
+        if task_status in {"in_queue", "generating"}:
+            continue
+        if task_status in {"not_found", "expired"}:
+            return {
+                "status": "failed",
+                "seed": str(seed),
+                "error_code": task_status,
+                "error_message": f"Volcengine task {task_id} {task_status}",
+            }
+        if task_status == "done":
+            return _save_m03_image(job, seed, data)
+
+        return {
+            "status": "failed",
+            "seed": str(seed),
+            "error_code": "unknown_task_status",
+            "error_message": f"Volcengine task_status={task_status}",
+        }
+
+
+def _volc_post_json(endpoint: str, action: str, payload: dict,
+                    access_key: str, secret_key: str) -> dict:
+    body = json.dumps(payload, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+    query = {"Action": action, "Version": VOLC_VERSION}
+    url = endpoint.rstrip("/") + "/?" + urllib.parse.urlencode(query)
+    headers = _volc_signed_headers(
+        method="POST",
+        endpoint=endpoint,
+        query=query,
+        body=body,
+        access_key=access_key,
+        secret_key=secret_key,
+    )
+    req = urllib.request.Request(url, data=body, headers=headers, method="POST")
+    try:
+        with urllib.request.urlopen(req, timeout=TIMEOUT_SEC) as resp:
+            raw = resp.read().decode("utf-8")
+            data = json.loads(raw)
+    except urllib.error.HTTPError as e:
+        raw = e.read().decode("utf-8", errors="replace")
+        try:
+            data = json.loads(raw)
+        except Exception:
+            data = {"code": e.code, "message": raw}
+        return {"error": True, "data": data}
+    except TimeoutError:
+        return {
+            "error": True,
+            "data": {"code": "request_timeout", "message": f"{action} 在 {TIMEOUT_SEC}s 内未完成"},
+        }
+    except Exception as e:
+        return {"error": True, "data": {"code": type(e).__name__, "message": str(e)}}
+
+    if str(data.get("code")) != "10000":
+        return {"error": True, "data": data}
+    return {"error": False, "data": data}
+
+
+def _volc_signed_headers(method: str, endpoint: str, query: dict, body: bytes,
+                         access_key: str, secret_key: str) -> dict[str, str]:
+    parsed = urllib.parse.urlparse(endpoint)
+    host = parsed.netloc or "visual.volcengineapi.com"
+    now = datetime.now(timezone.utc)
+    x_date = now.strftime("%Y%m%dT%H%M%SZ")
+    short_date = now.strftime("%Y%m%d")
+    payload_hash = hashlib.sha256(body).hexdigest()
+    signed_headers = "content-type;host;x-content-sha256;x-date"
+    canonical_query = urllib.parse.urlencode(sorted(query.items()))
+    canonical_headers = (
+        "content-type:application/json\n"
+        f"host:{host}\n"
+        f"x-content-sha256:{payload_hash}\n"
+        f"x-date:{x_date}\n"
+    )
+    canonical_request = "\n".join([
+        method,
+        parsed.path or "/",
+        canonical_query,
+        canonical_headers,
+        signed_headers,
+        payload_hash,
+    ])
+    credential_scope = f"{short_date}/{VOLC_REGION}/{VOLC_SERVICE}/request"
+    string_to_sign = "\n".join([
+        "HMAC-SHA256",
+        x_date,
+        credential_scope,
+        hashlib.sha256(canonical_request.encode("utf-8")).hexdigest(),
+    ])
+    signing_key = _volc_signing_key(secret_key, short_date)
+    signature = hmac.new(signing_key, string_to_sign.encode("utf-8"), hashlib.sha256).hexdigest()
+    authorization = (
+        f"HMAC-SHA256 Credential={access_key}/{credential_scope}, "
+        f"SignedHeaders={signed_headers}, Signature={signature}"
+    )
+    return {
+        "Authorization": authorization,
+        "Content-Type": "application/json",
+        "Host": host,
+        "X-Content-Sha256": payload_hash,
+        "X-Date": x_date,
+    }
+
+
+def _volc_signing_key(secret_key: str, short_date: str) -> bytes:
+    k_date = hmac.new(secret_key.encode("utf-8"), short_date.encode("utf-8"), hashlib.sha256).digest()
+    k_region = hmac.new(k_date, VOLC_REGION.encode("utf-8"), hashlib.sha256).digest()
+    k_service = hmac.new(k_region, VOLC_SERVICE.encode("utf-8"), hashlib.sha256).digest()
+    return hmac.new(k_service, b"request", hashlib.sha256).digest()
+
+
+def _volc_error_to_result(resp: dict, seed: int) -> dict:
+    data = resp.get("data") or {}
+    code = str(data.get("code") or data.get("status") or "volcengine_error")
+    msg = str(data.get("message") or data)
+    if code in VOLC_SAFETY_BLOCK_CODES or _looks_like_safety(code, msg):
+        return {
+            "status": "safety_blocked",
+            "seed": str(seed),
+            "safety_blocked": "true",
+            "revision_reason": f"{code}: {msg}"[:300],
+        }
+    return {
+        "status": "failed",
+        "seed": str(seed),
+        "error_code": code,
+        "error_message": msg[:300],
+    }
+
+
+def _save_m03_image(job: dict, seed: int, data: dict) -> dict:
+    RAW_DIR.mkdir(parents=True, exist_ok=True)
+    ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+
+    image_urls = data.get("image_urls") or []
+    if image_urls:
+        out_path = RAW_DIR / f"{job['job_id']}_{ts}.jpg"
+        try:
+            urllib.request.urlretrieve(image_urls[0], out_path)
+        except Exception as e:
+            return {
+                "status": "failed",
+                "seed": str(seed),
+                "error_code": "download_failed",
+                "error_message": str(e)[:300],
+            }
+        return {
+            "status": "success",
+            "seed": str(seed),
+            "safety_blocked": "false",
+            "raw_image_path": str(out_path.relative_to(PROJECT_ROOT)),
+        }
+
+    images_base64 = data.get("binary_data_base64") or []
+    if images_base64:
+        out_path = RAW_DIR / f"{job['job_id']}_{ts}.jpg"
+        try:
+            out_path.write_bytes(base64.b64decode(images_base64[0]))
+        except Exception as e:
+            return {
+                "status": "failed",
+                "seed": str(seed),
+                "error_code": "save_image_failed",
+                "error_message": str(e)[:300],
+            }
+        return {
+            "status": "success",
+            "seed": str(seed),
+            "safety_blocked": "false",
+            "raw_image_path": str(out_path.relative_to(PROJECT_ROOT)),
+        }
+
+    return {
+        "status": "failed",
+        "seed": str(seed),
+        "error_code": "parse_response_error",
+        "error_message": "Volcengine done 响应中没有 image_urls 或 binary_data_base64",
+    }
+
+
+# ------------------------------------------------------------------
 # 单 job 执行 + 回填
 # ------------------------------------------------------------------
 
@@ -458,6 +739,9 @@ def execute_one_job(job: dict, models_by_id: dict[str, dict]) -> dict:
 
     if model_id == "M01":
         return call_m01(job, model_row)
+
+    if model_id == "M03":
+        return call_m03(job, model_row)
 
     return {
         "status": "failed",
@@ -621,7 +905,8 @@ def _non_negative_int(value: str) -> int:
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="T2I 批量生成。必须显式传 --dry-run 或 --execute。"
-                    "当前支持 M01（OpenAI gpt-image-2）和 M02（DashScope wan2.7-image-pro）。"
+                    "当前支持 M01（OpenAI gpt-image-2）、M02（DashScope wan2.7-image-pro）"
+                    "和 M03（Volcengine Jimeng T2I 3.1）。"
     )
     mode = parser.add_mutually_exclusive_group(required=True)
     mode.add_argument("--dry-run", action="store_true",
@@ -676,9 +961,13 @@ def main() -> int:
     if args.dry_run:
         selected = filter_jobs(all_jobs, args.job_id, args.model_id, args.limit)
         cost = estimate_cost_cny(selected)
+        price_text = ", ".join(
+            f"{model_id} 单价 ¥{price:g}" if price else f"{model_id} 单价待填"
+            for model_id, price in sorted(COST_PER_IMAGE_CNY.items())
+        )
         print(f"[DRY-RUN] 共 {len(all_jobs)} 条 job，筛选后将执行 {len(selected)} 条")
         print(f"          filters: job_id={args.job_id!r}, model_id={args.model_id!r}, limit={args.limit!r}")
-        print(f"          预估成本: ¥{cost:.2f}  (M02 单价 ¥{COST_PER_IMAGE_CNY['M02']}, M01 单价 ¥{COST_PER_IMAGE_CNY['M01']})")
+        print(f"          预估成本: ¥{cost:.2f}  ({price_text})")
         print()
         print(render_job_table(selected))
         print()
