@@ -1,7 +1,8 @@
 # 环境变量与密钥
 .env
-.env.local
+.env.*
 *.key
+*.swp
 
 # Python
 __pycache__/
