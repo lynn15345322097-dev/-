@@ -12,6 +12,15 @@ __pycache__/
 venv/
 .pytest_cache/
 
+# Node / Next.js
+node_modules/
+.next/
+out/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
 # 图片生成产物（按需调整：若想纳入版本控制，删掉下面两行）
 images/raw/*
 images/blind/*
