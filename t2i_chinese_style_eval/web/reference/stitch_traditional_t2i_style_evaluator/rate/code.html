@@ -195,11 +195,6 @@
 </aside>
 <!-- Main Content Canvas -->
 <div class="flex-1 px-margin-desktop py-8 relative overflow-hidden">
-<!-- Global Reminder -->
-<div class="max-w-3xl mx-auto mb-12 flex items-center justify-center gap-3 py-2 px-6 bg-surface-container-high rounded-full">
-<span class="material-symbols-outlined text-secondary text-sm">info</span>
-<span class="font-label-sm text-label-sm tracking-widest uppercase opacity-80">Judge by consistency, not preference | 随物婉转，与心徘徊</span>
-</div>
 <!-- Content Header Area -->
 <div class="max-w-4xl mx-auto mb-16 grid grid-cols-1 md:grid-cols-2 gap-12 border-b border-outline-variant/30 pb-12">
 <div>
@@ -213,23 +208,18 @@
 </div>
 <!-- Image Inspection Area -->
 <section class="max-w-4xl mx-auto relative group">
-<div class="absolute -inset-10 ink-bleed rounded-full"></div>
-<div class="relative aspect-square md:aspect-[4/3] bg-surface-container flex items-center justify-center p-8 overflow-hidden brush-frame bg-white">
-<img class="w-full h-full object-contain filter grayscale contrast-125 transition-transform duration-700 group-hover:scale-[1.02]" data-alt="A sublime and atmospheric Chinese ink wash painting featuring a grand mountain range disappearing into a soft white mist. In the foreground, a gnarled, weathered pine tree stands heroically on a rocky outcropping, rendered with bold, jagged black ink strokes. The lighting is ethereal and diffused, creating a serene, high-key minimalist aesthetic with deep black ink contrasts. The composition follows traditional landscape scrolls, emphasizing empty space and spiritual tranquility in a modern light-mode UI context." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBleeff-Ofj14uKDDtSIqCjnAZkHlxT8cOPI1ueeJOIbGN_5tVFatJMwRytlB_MADW3S6NQrpxyDtbu9dBogXaLm_coFnle7UMkC14J_JJwzEq-kWv2jdlq6uY2V1UyqbTH1p_0qJJN-mc34w213OwossAsFOAZH6F0rNtGuzVWWjX7PrPKwx6a3Q5TOipMht_B3xDEKUeTKo-I9qW-yPjMd0WkGJItT-Ws71DQ3UurW81ejjeI4FItVOTTKmOGJUSeq6oFQvmYI4Y"/>
-</div>
-<!-- Floating Labels/Seal for Aesthetic -->
-<div class="absolute top-4 right-12 w-12 h-12 border-2 border-red-800 text-red-800 flex items-center justify-center font-display-lg text-sm opacity-60 mix-blend-multiply rotate-12">
-<span class="font-bold">审核</span>
+<div class="relative aspect-square md:aspect-[4/3] bg-surface-container flex items-center justify-center p-8 overflow-hidden bg-white">
+<img class="w-full h-full object-contain transition-transform duration-700 group-hover:scale-[1.02]" data-alt="A sublime and atmospheric Chinese ink wash painting featuring a grand mountain range disappearing into a soft white mist. In the foreground, a gnarled, weathered pine tree stands heroically on a rocky outcropping, rendered with bold, jagged black ink strokes. The lighting is ethereal and diffused, creating a serene, high-key minimalist aesthetic with deep black ink contrasts. The composition follows traditional landscape scrolls, emphasizing empty space and spiritual tranquility in a modern light-mode UI context." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBleeff-Ofj14uKDDtSIqCjnAZkHlxT8cOPI1ueeJOIbGN_5tVFatJMwRytlB_MADW3S6NQrpxyDtbu9dBogXaLm_coFnle7UMkC14J_JJwzEq-kWv2jdlq6uY2V1UyqbTH1p_0qJJN-mc34w213OwossAsFOAZH6F0rNtGuzVWWjX7PrPKwx6a3Q5TOipMht_B3xDEKUeTKo-I9qW-yPjMd0WkGJItT-Ws71DQ3UurW81ejjeI4FItVOTTKmOGJUSeq6oFQvmYI4Y"/>
 </div>
 </section>
 <!-- Action Buttons Footer -->
 <div class="max-w-4xl mx-auto mt-16 flex justify-between items-center">
-<button class="flex items-center gap-2 text-secondary hover:text-primary transition-colors">
+<button class="flex items-center gap-2 text-secondary hover:text-primary transition-colors" type="button" onclick="location.href='/profile'">
 <span class="material-symbols-outlined">arrow_back</span>
 <span class="font-label-sm">Return to Studio / 返回工作室</span>
 </button>
 <div class="flex gap-8">
-<button class="px-8 py-3 text-on-surface-variant hover:text-error transition-colors border-b border-transparent hover:border-error">Skip / 跳过</button>
+__PREV_BUTTON__
 </div>
 </div>
 </div>
@@ -242,81 +232,60 @@
 <!-- Style Consistency -->
 <div class="group">
 <label class="flex justify-between items-end mb-4">
-<span class="font-body-md font-semibold">Style / 风格相符度</span>
-<span class="font-label-sm text-secondary">Scale 1-5</span>
+<span><span class="font-body-md font-semibold">形式风格一致性</span><span class="block text-xs text-secondary mt-1 font-normal">图像是否符合目标传统风格。</span></span>
 </label>
 <div class="flex justify-between gap-2">
 <input class="hidden rating-input" id="s1" name="style" type="radio"/><label class="flex-1 h-10 border border-outline flex items-center justify-center cursor-pointer hover:bg-surface-container-highest transition-colors font-label-sm" for="s1">1</label>
 <input class="hidden rating-input" id="s2" name="style" type="radio"/><label class="flex-1 h-10 border border-outline flex items-center justify-center cursor-pointer hover:bg-surface-container-highest transition-colors font-label-sm" for="s2">2</label>
 <input class="hidden rating-input" id="s3" name="style" type="radio"/><label class="flex-1 h-10 border border-outline flex items-center justify-center cursor-pointer hover:bg-surface-container-highest transition-colors font-label-sm" for="s3">3</label>
-<input checked="" class="hidden rating-input" id="s4" name="style" type="radio"/><label class="flex-1 h-10 border border-outline flex items-center justify-center cursor-pointer hover:bg-surface-container-highest transition-colors font-label-sm" for="s4">4</label>
+<input class="hidden rating-input" id="s4" name="style" type="radio"/><label class="flex-1 h-10 border border-outline flex items-center justify-center cursor-pointer hover:bg-surface-container-highest transition-colors font-label-sm" for="s4">4</label>
 <input class="hidden rating-input" id="s5" name="style" type="radio"/><label class="flex-1 h-10 border border-outline flex items-center justify-center cursor-pointer hover:bg-surface-container-highest transition-colors font-label-sm" for="s5">5</label>
 </div>
 </div>
-<!-- Accuracy -->
+<!-- Cultural Object Accuracy -->
 <div class="group">
 <label class="flex justify-between items-end mb-4">
-<span class="font-body-md font-semibold">Accuracy / 意境准确性</span>
-<span class="font-label-sm text-secondary">Scale 1-5</span>
+<span><span class="font-body-md font-semibold">文化对象准确性</span><span class="block text-xs text-secondary mt-1 font-normal">图像是否生成了提示词指定的对象和关键元素。</span></span>
 </label>
 <div class="flex justify-between gap-2">
 <input class="hidden rating-input" id="a1" name="accuracy" type="radio"/><label class="flex-1 h-10 border border-outline flex items-center justify-center cursor-pointer hover:bg-surface-container-highest transition-colors font-label-sm" for="a1">1</label>
 <input class="hidden rating-input" id="a2" name="accuracy" type="radio"/><label class="flex-1 h-10 border border-outline flex items-center justify-center cursor-pointer hover:bg-surface-container-highest transition-colors font-label-sm" for="a2">2</label>
 <input class="hidden rating-input" id="a3" name="accuracy" type="radio"/><label class="flex-1 h-10 border border-outline flex items-center justify-center cursor-pointer hover:bg-surface-container-highest transition-colors font-label-sm" for="a3">3</label>
-<input checked="" class="hidden rating-input" id="a4" name="accuracy" type="radio"/><label class="flex-1 h-10 border border-outline flex items-center justify-center cursor-pointer hover:bg-surface-container-highest transition-colors font-label-sm" for="a4">4</label>
+<input class="hidden rating-input" id="a4" name="accuracy" type="radio"/><label class="flex-1 h-10 border border-outline flex items-center justify-center cursor-pointer hover:bg-surface-container-highest transition-colors font-label-sm" for="a4">4</label>
 <input class="hidden rating-input" id="a5" name="accuracy" type="radio"/><label class="flex-1 h-10 border border-outline flex items-center justify-center cursor-pointer hover:bg-surface-container-highest transition-colors font-label-sm" for="a5">5</label>
 </div>
 </div>
-<!-- Propriety -->
+<!-- Obvious Error Control -->
 <div class="group">
 <label class="flex justify-between items-end mb-4">
-<span class="font-body-md font-semibold">Propriety / 笔墨得体</span>
-<span class="font-label-sm text-secondary">Scale 1-5</span>
+<span><span class="font-body-md font-semibold">明显错误控制</span><span class="block text-xs text-secondary mt-1 font-normal">是否出现西式元素、游戏角色、赛博光效等明显跑偏。</span></span>
 </label>
 <div class="flex justify-between gap-2">
 <input class="hidden rating-input" id="p1" name="propriety" type="radio"/><label class="flex-1 h-10 border border-outline flex items-center justify-center cursor-pointer hover:bg-surface-container-highest transition-colors font-label-sm" for="p1">1</label>
 <input class="hidden rating-input" id="p2" name="propriety" type="radio"/><label class="flex-1 h-10 border border-outline flex items-center justify-center cursor-pointer hover:bg-surface-container-highest transition-colors font-label-sm" for="p2">2</label>
 <input class="hidden rating-input" id="p3" name="propriety" type="radio"/><label class="flex-1 h-10 border border-outline flex items-center justify-center cursor-pointer hover:bg-surface-container-highest transition-colors font-label-sm" for="p3">3</label>
 <input class="hidden rating-input" id="p4" name="propriety" type="radio"/><label class="flex-1 h-10 border border-outline flex items-center justify-center cursor-pointer hover:bg-surface-container-highest transition-colors font-label-sm" for="p4">4</label>
-<input checked="" class="hidden rating-input" id="p5" name="propriety" type="radio"/><label class="flex-1 h-10 border border-outline flex items-center justify-center cursor-pointer hover:bg-surface-container-highest transition-colors font-label-sm" for="p5">5</label>
+<input class="hidden rating-input" id="p5" name="propriety" type="radio"/><label class="flex-1 h-10 border border-outline flex items-center justify-center cursor-pointer hover:bg-surface-container-highest transition-colors font-label-sm" for="p5">5</label>
 </div>
 </div>
-<!-- Overall -->
+<!-- Overall Score -->
 <div class="group">
 <label class="flex justify-between items-end mb-4">
-<span class="font-body-md font-semibold">Overall / 综合感官</span>
-<span class="font-label-sm text-secondary">Scale 1-5</span>
+<span><span class="font-body-md font-semibold">整体评分</span><span class="block text-xs text-secondary mt-1 font-normal">综合判断这张图是否符合本次任务。</span></span>
 </label>
 <div class="flex justify-between gap-2">
 <input class="hidden rating-input" id="o1" name="overall" type="radio"/><label class="flex-1 h-10 border border-outline flex items-center justify-center cursor-pointer hover:bg-surface-container-highest transition-colors font-label-sm" for="o1">1</label>
 <input class="hidden rating-input" id="o2" name="overall" type="radio"/><label class="flex-1 h-10 border border-outline flex items-center justify-center cursor-pointer hover:bg-surface-container-highest transition-colors font-label-sm" for="o2">2</label>
-<input checked="" class="hidden rating-input" id="o3" name="overall" type="radio"/><label class="flex-1 h-10 border border-outline flex items-center justify-center cursor-pointer hover:bg-surface-container-highest transition-colors font-label-sm" for="o3">3</label>
+<input class="hidden rating-input" id="o3" name="overall" type="radio"/><label class="flex-1 h-10 border border-outline flex items-center justify-center cursor-pointer hover:bg-surface-container-highest transition-colors font-label-sm" for="o3">3</label>
 <input class="hidden rating-input" id="o4" name="overall" type="radio"/><label class="flex-1 h-10 border border-outline flex items-center justify-center cursor-pointer hover:bg-surface-container-highest transition-colors font-label-sm" for="o4">4</label>
 <input class="hidden rating-input" id="o5" name="overall" type="radio"/><label class="flex-1 h-10 border border-outline flex items-center justify-center cursor-pointer hover:bg-surface-container-highest transition-colors font-label-sm" for="o5">5</label>
 </div>
 </div>
 </div>
-<!-- Error Checklist -->
+<!-- Comment Box / 备注 -->
 <div class="pt-8 border-t border-outline-variant/30">
-<h4 class="font-label-sm text-secondary uppercase tracking-widest mb-6">Error Checklist / 瑕疵识别</h4>
-<div class="grid grid-cols-1 gap-4">
-<label class="flex items-center gap-3 cursor-pointer">
-<input class="w-5 h-5 border-2 border-outline-variant rounded-sm text-primary focus:ring-0" type="checkbox"/>
-<span class="font-body-md">Ink Smudge (墨渍扩散过度)</span>
-</label>
-<label class="flex items-center gap-3 cursor-pointer">
-<input class="w-5 h-5 border-2 border-outline-variant rounded-sm text-primary focus:ring-0" type="checkbox"/>
-<span class="font-body-md">Anachronism (时代违和)</span>
-</label>
-<label class="flex items-center gap-3 cursor-pointer">
-<input class="w-5 h-5 border-2 border-outline-variant rounded-sm text-primary focus:ring-0" type="checkbox"/>
-<span class="font-body-md">Poor Negative Space (留白失当)</span>
-</label>
-<label class="flex items-center gap-3 cursor-pointer">
-<input class="w-5 h-5 border-2 border-outline-variant rounded-sm text-primary focus:ring-0" type="checkbox"/>
-<span class="font-body-md">Edge Artifacts (边缘伪影)</span>
-</label>
-</div>
+<h4 class="font-label-sm text-secondary uppercase tracking-widest mb-4">备注 / 问题说明</h4>
+<textarea class="w-full min-h-24 bg-transparent border border-outline-variant rounded-sm p-3 font-body-md text-body-md focus:ring-0 focus:border-primary" name="comment" placeholder="请在此输入对图片中存在问题的具体说明...">__COMMENT_VALUE__</textarea>
 </div>
 <!-- Final Action -->
 <div class="mt-8 relative pt-12 pb-32">
@@ -325,34 +294,16 @@
 <div class="absolute inset-0 bg-red-800 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
 <span class="material-symbols-outlined z-10 group-hover:text-white transition-colors">approval</span>
 </button>
-<!-- Decorative Seal for animation -->
-<div class="absolute left-1/2 top-4 -translate-x-1/2 opacity-0 pointer-events-none seal-transition scale-150" id="visualSeal">
-<div class="w-20 h-20 border-4 border-red-800 text-red-800 flex flex-wrap items-center justify-center p-2 font-bold text-lg leading-tight bg-white shadow-xl rotate-12">
-<span>落</span><span>款</span>
-<span>定</span><span>稿</span>
-</div>
-</div>
 </div>
 </form>
 </aside>
 </main>
 <script>
         document.getElementById('ratingForm').addEventListener('submit', (e) => {
-            e.preventDefault();
-            const seal = document.getElementById('visualSeal');
             const btn = document.getElementById('applySealBtn');
-            
-            // Animation for "Seal" effect
-            seal.classList.remove('opacity-0');
-            seal.classList.add('opacity-100', 'translate-y-20');
             btn.innerHTML = '<span class="font-headline-md tracking-widest z-10">Rated / 已评定</span>';
             btn.classList.add('bg-on-surface-variant');
             btn.classList.remove('bg-primary');
-            
-            setTimeout(() => {
-                alert('评定结果已提交至墨谱系统。Rating submitted successfully.');
-                location.reload();
-            }, 1200);
         });
 
         // Simple cursor interaction

@@ -1,0 +1,13 @@
+reviewer_id,job_id,prompt_id,blind_model_label,style_fidelity,element_accuracy,context_appropriateness,overall_score,备注,created_at
+lynn15345322097@gmail.com,J0027,JP_L1_001,Model_B,3,2,2,3,,2026-06-26T04:26:54+00:00
+lynn15345322097@gmail.com,J0010,DH_L1_001,Model_A,3,3,2,3,,2026-06-26T04:28:00+00:00
+lynn15345322097@gmail.com,J0012,DH_L1_001,Model_B,3,2,2,3,,2026-06-26T04:28:16+00:00
+lynn15345322097@gmail.com,J0028,JP_L1_001,Model_B,3,2,3,4,错误类型: 门类混搭,2026-06-26T04:38:17+00:00
+lynn15345322097@gmail.com,J0007,SS_L2_001,Model_B,2,3,2,3,,2026-06-26T04:39:34+00:00
+lynn15345322097@gmail.com,J0020,NH_L1_001,Model_B,4,2,4,2,错误类型: 西式元素混入,2026-06-26T04:39:46+00:00
+lynn15345322097@gmail.com,J0011,DH_L1_001,Model_B,3,2,4,3,错误类型: 现代插画化,2026-06-26T04:39:58+00:00
+lynn15345322097@gmail.com,J0017,NH_L1_001,Model_A,4,2,3,2,,2026-06-26T04:40:20+00:00
+lynn15345322097@gmail.com,J0015,DH_L2_001,Model_B,3,2,3,2,,2026-06-26T04:44:44+00:00
+lynn15345322097@gmail.com,J0026,JP_L1_001,Model_A,2,3,2,4,,2026-06-26T04:44:59+00:00
+lynn15345322097@gmail.com,J0003,SS_L1_001,Model_B,1,4,3,3,,2026-06-26T04:45:19+00:00
+lynn15345322097@gmail.com,J0009,DH_L1_001,Model_A,3,3,3,2,,2026-06-26T04:45:37+00:00

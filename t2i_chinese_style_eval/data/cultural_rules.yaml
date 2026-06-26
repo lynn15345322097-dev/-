@@ -1,0 +1,58 @@
+# cultural_rules.yaml — 文化语境规则库
+#
+# 每个 target_style 对应一组规则。auto_evaluate.py 加载此文件，
+# 将规则注入 Gemini prompt，让模型逐条判断是否触发。
+#
+# severity 含义: 0=未触发, 1=轻微, 2=明显, 3=严重
+# context_appropriateness = max(1, 5 - max_rule_severity)
+# forbidden_compliance     = max(1, 5 - min(4, severity_sum))
+#
+# 按需增删规则；新增规则需同步 schema.md。
+
+水墨山水:
+  - id: modern_city
+    desc: 出现现代城市、高楼、玻璃幕墙
+  - id: neon_cyberpunk
+    desc: 出现霓虹灯、赛博光效
+  - id: photorealistic_landscape
+    desc: 整体呈现写实摄影风景
+  - id: western_oil_painting
+    desc: 西式油画光影/厚涂
+  - id: over_saturated_color
+    desc: 过度高饱和色彩，不符合水墨设色习惯
+
+敦煌图像:
+  - id: modern_gufeng_illustration
+    desc: 呈现现代古风插画感（数码平涂、二次元线条）
+  - id: game_character
+    desc: 游戏角色造型（技能特效、3A人物比例）
+  - id: studio_photography
+    desc: 摄影棚布光/真人cosplay感
+  - id: modern_costume
+    desc: 人物身着现代服饰
+  - id: excessive_lighting
+    desc: 过度电影光效/体积光
+
+民间年画:
+  - id: western_knight
+    desc: 呈现西方骑士形象
+  - id: superhero
+    desc: 呈现现代超级英雄造型
+  - id: photorealistic_portrait
+    desc: 普通写实肖像摄影
+  - id: police_or_military_modern
+    desc: 现代警察/军装制服
+  - id: low_festive_decorativeness
+    desc: 缺少传统年画装饰性（无边框/无纹样/无对称感）
+
+京剧脸谱:
+  - id: random_color_mask
+    desc: 随机彩色面具（无谱式结构）
+  - id: modern_makeup
+    desc: 现代化妆造型（粉底/高光/眼影）
+  - id: clown_makeup
+    desc: 西方小丑妆
+  - id: scifi_helmet
+    desc: 科幻头盔/机械面部
+  - id: missing_facial_pattern_structure
+    desc: 缺少脸谱图案结构（无勾脸纹样/无对称图案）

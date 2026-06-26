@@ -151,7 +151,7 @@
 | `evaluated_at` | ISO8601 | |
 | `style_fidelity` | int 1-5 | 风格保真度 |
 | `element_accuracy` | int 1-5 | 期望元素准确性 |
-| `context_appropriateness` | int 1-5 | 文化语境得体性 |
+| `context_appropriateness` | int 1-5 | MVP 阶段仅表示明显语境错误/风格漂移控制，不解释为深层文化理解 |
 | `forbidden_compliance` | int 1-5 | 禁止元素合规度（**反向语义**：5=无违反，1=严重违反）。固定语义在 `auto_evaluate.py` 和 `analyze_results.py` 中遵守 |
 | `overall_score` | float | 综合分（计算公式在 analyze_results.py 中定义）|
 | `expected_hits` | string | 命中的 expected 元素列表（分号分隔）|
@@ -159,7 +159,7 @@
 | `raw_response_json` | string | 评价模型原始 JSON 响应（审计用）|
 | `error_message` | string | 评价失败原因 |
 
-**客观评价硬约束**：不能开放式问"这是什么风格"。必须输入 `target_style`、`prompt_text`、`expected_elements`、`forbidden_elements`，做结构化判断。
+**客观评价硬约束**：不能开放式问"这是什么风格"或"是否符合中国传统文化语境"。必须输入 `target_style`、`prompt_text`、`expected_elements`、`forbidden_elements`，做结构化判断。MVP 自动评价主要关注 `style_fidelity`、`element_accuracy`、`forbidden_compliance`，综合分固定为 `0.40 × style_fidelity + 0.40 × element_accuracy + 0.20 × forbidden_compliance`；`context_appropriateness` 暂作为明显语境错误/风格漂移控制的兼容字段。
 
 ---
 
