@@ -1,3 +1,4 @@
 model_id,model_name,provider,api_endpoint,model_version,default_params,notes
 M01,GPT Image 2,OpenAI,https://api.openai.com/v1/images/generations,gpt-image-2,"{""size"":""1024x1024"",""quality"":""high""}",国际通用强基线；API 可能 revise prompt，需记录 revised_prompt
 M02,Qwen Image 2.0 Pro,Alibaba DashScope,https://dashscope.aliyuncs.com/api/v1,wan2.7-image-pro,"{""size"":""2K"",""n"":1}",DashScope 通义万相 2.7 专业版（北京地域）；SDK 用 dashscope.aigc.image_generation.ImageGeneration；按图像张数计费，失败不计费
+M03,Jimeng T2I 3.1,Volcengine,https://visual.volcengineapi.com,jimeng_t2i_v31,"{""width"":1328,""height"":1328,""use_pre_llm"":false}",火山引擎文生图3.1；异步提交+轮询；鉴权使用 VOLC_ACCESS_KEY_ID/VOLC_SECRET_ACCESS_KEY；Region=cn-north-1 Service=cv

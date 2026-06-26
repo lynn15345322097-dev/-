@@ -499,12 +499,7 @@ def export_ratings() -> None:
             prompt_id = info.get("prompt_id", "")
             model_id = info.get("model_id", "")
 
-            if model_id == "M01":
-                blind_model_label = "Model_A"
-            elif model_id == "M02":
-                blind_model_label = "Model_B"
-            else:
-                blind_model_label = f"Model_{model_id}" if model_id else "Unknown"
+            blind_model_label = BLIND_MODEL_LABELS.get(model_id, "Model_Unknown")
 
             errors = row["error_tags"]
             comment = row["comment"]
@@ -532,14 +527,14 @@ def export_ratings() -> None:
 def progress_for(rater_id: str | None = None) -> dict[str, int]:
     with connect() as conn:
         total = conn.execute("select count(*) from rating_items").fetchone()[0]
-        raters = conn.execute("select count(*) from raters").fetchone()[0]
+        active_raters = conn.execute("select count(distinct rater_id) from human_scores").fetchone()[0]
         if rater_id:
             done = conn.execute(
                 "select count(*) from human_scores where rater_id = ?", (rater_id,)
             ).fetchone()[0]
         else:
             done = conn.execute("select count(*) from human_scores").fetchone()[0]
-    return {"total": total, "done": done, "remaining": max(total - done, 0), "raters": raters}
+    return {"total": total, "done": done, "remaining": max(total - done, 0), "raters": active_raters}
 
 
 def next_item(rater_id: str, exclude_image_id: str | None = None) -> sqlite3.Row | None:
@@ -729,6 +724,7 @@ def render_done(rater_id: str = "") -> str:
     )
     page = page.replace("__STYLE_HEADER__", "")
     page = page.replace("__PROMPT_BOX__", "")
+    page = page.replace("__PROGRESS__", "")
     page = page.replace("__COMMENT_VALUE__", "")
     page = page.replace("__PREV_BUTTON__", "")
 
@@ -852,6 +848,10 @@ def render_rate(rater_id: str, message: str = "", show_prev: bool = False, image
 </div>"""
     page = page.replace("__PROMPT_BOX__", prompt_box)
 
+    p = progress_for(rater_id)
+    pct = 0 if p["total"] == 0 else round(p["done"] / p["total"] * 100)
+    page = page.replace("__PROGRESS__", f"· 已评 {p['done']}/{p['total']} ({pct}%)")
+
     page = page.replace(
         'src="https://lh3.googleusercontent.com/aida-public/AB6AXuBleeff-Ofj14uKDDtSIqCjnAZkHlxT8cOPI1ueeJOIbGN_5tVFatJMwRytlB_MADW3S6NQrpxyDtbu9dBogXaLm_coFnle7UMkC14J_JJwzEq-kWv2jdlq6uY2V1UyqbTH1p_0qJJN-mc34w213OwossAsFOAZH6F0rNtGuzVWWjX7PrPKwx6a3Q5TOipMht_B3xDEKUeTKo-I9qW-yPjMd0WkGJItT-Ws71DQ3UurW81ejjeI4FItVOTTKmOGJUSeq6oFQvmYI4Y"',
         f'src="{image_src}" onerror="this.alt=\'Image not available: {esc(current_image_id)}.png\'"',
@@ -905,11 +905,118 @@ def render_rate(rater_id: str, message: str = "", show_prev: bool = False, image
 
 def render_admin(rater_id: str | None, imported: int | None = None) -> str:
     p = progress_for()
+    pct = 0 if p["total"] == 0 else round(p["done"] / p["total"] * 100)
     page = ref_page("admin")
     page = page.replace("Inspector 01", esc(rater_id or "Admin"))
-    page = page.replace("监控当前评分进程，分析评审质量与进度，管理核心数据流转。", f"监控当前评分进程。Items {p['total']} · Scores {p['done']} · Raters {p['raters']}。")
+    page = page.replace("监控当前评分进程，分析评审质量与进度，管理核心数据流转。", f"监控当前评分进程。共 {p['total']} 张图片，{p['done']} 条评分，{p['raters']} 位评审者。")
     if imported is not None:
         page = page.replace("评分管理概览", f"评分管理概览 · Imported {imported}")
+
+    # Replace fake stats with real data
+    page = re.sub(
+        r'<p class="font-label-sm text-secondary mt-1">.*?</p>',
+        f'<p class="font-label-sm text-secondary mt-1">共 {p["total"]} 张评测图片，{p["raters"]} 位评审者参与</p>',
+        page, count=1, flags=re.DOTALL,
+    )
+    page = re.sub(
+        r'<span class="font-display-lg text-primary">\d+%</span>',
+        f'<span class="font-display-lg text-primary">{pct}%</span>',
+        page, count=1,
+    )
+    page = page.replace("<h4 class=\"font-display-lg text-primary mt-2\">12</h4>", f'<h4 class="font-display-lg text-primary mt-2">{p["raters"]}</h4>')
+
+    # Replace fake chart with real per-reviewer progress bars
+    with connect() as conn:
+        reviewer_rows = conn.execute(
+            "select rater_id, count(*) as n from human_scores group by rater_id order by n desc"
+        ).fetchall()
+    bars = ""
+    for i, row in enumerate(reviewer_rows):
+        h = max(10, round(row["n"] / max(p["total"], 1) * 100))
+        bars += f'<div class="flex-1 bg-primary/{(30 + i * 15) % 90 + 10} h-[{h}%] hover:h-[{min(h + 5, 100)}%] transition-all duration-700"></div>\n'
+    if not reviewer_rows:
+        bars = '<div class="flex-1 bg-primary/40 h-[5%]"></div>'
+    page = re.sub(
+        r'<div class="h-48 flex items-end gap-4 relative">.*?</div>\s*<div class="flex justify-between mt-4 font-label-sm text-secondary">',
+        f'<div class="h-48 flex items-end gap-4 relative">{bars}</div><div class="flex justify-between mt-4 font-label-sm text-secondary">',
+        page, count=1, flags=re.DOTALL,
+    )
+    # Replace day labels with reviewer names
+    labels_html = "".join(f"<span>{esc(row['rater_id'][:3])}</span>" for row in reviewer_rows[:7]) or "<span>--</span>"
+    page = re.sub(
+        r'<span>MON</span><span>TUE</span><span>WED</span><span>THU</span><span>FRI</span><span>SAT</span><span>SUN</span>',
+        labels_html,
+        page, count=1,
+    )
+
+    # Replace fake On-duty/Pending with real stats
+    page = re.sub(
+        r'<span class="text-secondary">On-duty</span>\s*<span class="font-label-sm text-primary">\d+</span>',
+        f'<span class="text-secondary">已评图片</span><span class="font-label-sm text-primary">{p["done"]}</span>',
+        page, count=1, flags=re.DOTALL,
+    )
+    page = re.sub(
+        r'<span class="text-secondary">Pending Approval</span>\s*<span class="font-label-sm text-primary">\d+</span>',
+        f'<span class="text-secondary">剩余待评</span><span class="font-label-sm text-primary">{p["remaining"]}</span>',
+        page, count=1, flags=re.DOTALL,
+    )
+
+    # Replace fake reviewer table with real data
+    real_table = ""
+    for row in reviewer_rows:
+        rpct = 0 if p["total"] == 0 else round(row["n"] / p["total"] * 100)
+        # Calculate real average time per rating
+        times = conn.execute(
+            "select rated_at from human_scores where rater_id = ? order by rated_at",
+            (row["rater_id"],)
+        ).fetchall()
+        avg_time = "--"
+        if len(times) >= 2:
+            from datetime import datetime
+            first = datetime.fromisoformat(times[0]["rated_at"])
+            last = datetime.fromisoformat(times[-1]["rated_at"])
+            span_sec = (last - first).total_seconds()
+            avg_sec = span_sec / (len(times) - 1) if len(times) > 1 else span_sec
+            if avg_sec < 60:
+                avg_time = f"{int(avg_sec)}s"
+            else:
+                avg_time = f"{avg_sec / 60:.1f}min"
+        real_table += f"""<tr class="group hover:bg-surface-container-low transition-colors">
+<td class="py-6 flex items-center gap-4">
+<div class="w-8 h-8 rounded-full bg-surface-dim flex items-center justify-center font-display-lg text-[14px]">{esc(row['rater_id'][0].upper())}</div>
+<div><p class="font-body-md text-primary">{esc(row['rater_id'])}</p></div>
+</td>
+<td class="py-6 font-label-sm text-center">{row['n']}</td>
+<td class="py-6 font-label-sm text-center">{avg_time}</td>
+<td class="py-6 text-right"><span class="px-3 py-1 bg-surface-container text-[11px] font-label-sm text-primary">{rpct}%</span></td>
+</tr>"""
+    page = re.sub(
+        r'<tbody class="divide-y divide-outline-variant/10">.*?</tbody>',
+        f'<tbody class="divide-y divide-outline-variant/10">{real_table}</tbody>',
+        page, count=1, flags=re.DOTALL,
+    )
+
+    # Replace fake "最近动态" entries with real recent ratings
+    with connect() as conn:
+        recent = conn.execute(
+            "select rater_id, image_id, rated_at from human_scores order by rated_at desc limit 5"
+        ).fetchall()
+    if recent:
+        updates = ""
+        for r in recent:
+            updates += f"""<div class="flex gap-4">
+<div class="h-10 w-[2px] bg-primary/20"></div>
+<div><p class="font-body-md text-primary text-sm">{esc(r['rater_id'])} 评了 {esc(r['image_id'])}</p>
+<p class="font-label-sm text-secondary">{esc(r['rated_at'][:19])}</p></div>
+</div>"""
+    else:
+        updates = '<p class="text-secondary font-label-sm">暂无评分记录</p>'
+    page = page.replace("评审员 Li Wei 获得了 Ink Master 认证", f"{esc(recent[0]['rater_id']) if recent else '--'} 完成了最新评分")
+    page = page.replace("5 hours ago • System Log", f"{esc(recent[0]['rated_at'][:19]) if recent else ''}")
+    page = page.replace("样本批次 #A904 评审已完成", "评测进行中")
+    page = page.replace("2 hours ago • Automated Notification", "")
+    page = page.replace("服务器导出队列正在处理中 (64%)", f"已收集 {p['done']} 条评分")
+    page = page.replace("Just now • Performance Monitor", "")
 
     page = apply_top_nav(page, "admin", rater_id)
 

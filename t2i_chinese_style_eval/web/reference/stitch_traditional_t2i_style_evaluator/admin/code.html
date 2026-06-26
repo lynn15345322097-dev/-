@@ -142,12 +142,12 @@
 <body class="bg-background text-on-surface font-body-md selection:bg-primary/10">
 <!-- TopNavBar -->
 <header class="w-full top-0 sticky bg-surface border-b border-outline-variant/30 z-50">
-<div class="flex justify-between items-center px-margin-desktop py-4 w-full max-w-container-max mx-auto">
+<div class="flex justify-between items-center px-4 md:px-8 lg:px-margin-desktop py-4 w-full max-w-container-max mx-auto">
 <div class="flex items-center gap-4">
 <div class="seal-logo">墨</div>
 <h1 class="font-display-lg text-display-lg text-primary tracking-tighter">SumiRate</h1>
 </div>
-<nav class="hidden md:flex gap-8 items-center">
+<nav class="flex gap-4 md:gap-8 items-center">
 <a class="font-body-md text-primary border-b-2 border-primary pb-1 transition-colors duration-300" href="#">Dashboard</a>
 <a class="font-body-md text-on-surface-variant hover:text-primary transition-colors duration-300" href="#">Gallery</a>
 <a class="font-body-md text-on-surface-variant hover:text-primary transition-colors duration-300" href="#">Archive</a>
@@ -156,53 +156,11 @@
 </div>
 </div>
 </header>
-<div class="flex min-h-screen">
-<!-- SideNavBar -->
-<aside class="h-screen w-64 fixed left-0 top-0 pt-24 flex flex-col gap-unit px-4 border-r border-outline-variant/20 bg-surface-container-low z-40">
-<div class="px-4 mb-8">
-<div class="flex items-center gap-3 mb-2">
-<div class="w-10 h-10 rounded-full bg-surface-variant flex items-center justify-center overflow-hidden">
-<img class="w-full h-full object-cover" data-alt="A refined charcoal portrait of a professional Chinese calligrapher in a minimalist, high-key studio. The portrait captures deep focus and artistic wisdom, set against a background of soft paper textures and subtle grey washes, embodying the zen-like SumiRate aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDvkGLflZXWIQSCKWaBXFeWrcwaG2pgPmtJ3Pn4zDQ3qOCOMGv0W7O9hySU1w565YZrwlC49twfKLBoXdzPgufERazHpRsnZ138vDkcIjsM2knypOrbWSKWIgutHPlS-_4cgpyAIYEeagj5ut7d5eL0UpY5FBEWCajCurXJKFl5K1cBv_mygXxzbv1yv67_en_XFyGkrkSo0FPX-hXAlTQgyl560BJoftT_Tp3NzY6z2hj52FNje1Pk7a0uAAi1F9GFi5OPjgFvpJg"/>
-</div>
-<div>
-<p class="font-headline-md text-primary text-[16px] leading-tight">Inspector 01</p>
-<p class="font-label-sm text-secondary">Ink Master Level</p>
-</div>
-</div>
-</div>
-<nav class="space-y-1">
-<a class="flex items-center gap-3 bg-secondary-container text-primary rounded-lg px-4 py-3 hover:translate-x-1 transition-all duration-300" href="#">
-<span class="material-symbols-outlined">search_check</span>
-<span class="font-label-sm">Inspector</span>
-</a>
-<a class="flex items-center gap-3 text-secondary px-4 py-3 hover:bg-surface-container-highest rounded-lg hover:translate-x-1 transition-all duration-300" href="#">
-<span class="material-symbols-outlined">grid_view</span>
-<span class="font-label-sm">Composition</span>
-</a>
-<a class="flex items-center gap-3 text-secondary px-4 py-3 hover:bg-surface-container-highest rounded-lg hover:translate-x-1 transition-all duration-300" href="#">
-<span class="material-symbols-outlined">gradient</span>
-<span class="font-label-sm">Tone</span>
-</a>
-<a class="flex items-center gap-3 text-secondary px-4 py-3 hover:bg-surface-container-highest rounded-lg hover:translate-x-1 transition-all duration-300" href="#">
-<span class="material-symbols-outlined">contrast</span>
-<span class="font-label-sm">Contrast</span>
-</a>
-<a class="flex items-center gap-3 text-secondary px-4 py-3 hover:bg-surface-container-highest rounded-lg hover:translate-x-1 transition-all duration-300" href="#">
-<span class="material-symbols-outlined">approval</span>
-<span class="font-label-sm">Stamp</span>
-</a>
-</nav>
-<div class="mt-auto pb-12 px-4">
-<button class="w-full py-3 bg-primary text-on-primary font-label-sm rounded shadow-sm hover:bg-secondary transition-colors">
-                    Finalize Rating
-                </button>
-</div>
-</aside>
 <!-- Main Content -->
-<main class="flex-1 ml-64 p-margin-desktop bg-background overflow-y-auto">
+<main class="flex-1 p-4 md:p-8 lg:p-margin-desktop bg-background overflow-y-auto">
 <div class="max-w-container-max mx-auto space-y-12">
 <!-- Page Header -->
-<section class="flex justify-between items-end">
+<section class="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
 <div>
 <h2 class="font-headline-md text-display-lg text-primary">评分管理概览</h2>
 <p class="font-body-md text-secondary mt-2 max-w-2xl">监控当前评分进程，分析评审质量与进度，管理核心数据流转。</p>
@@ -277,10 +235,9 @@
 <thead>
 <tr class="border-b border-primary/10">
 <th class="py-4 font-label-sm text-secondary font-medium uppercase">评审员 (Reviewer)</th>
-<th class="py-4 font-label-sm text-secondary font-medium uppercase">等级 (Level)</th>
 <th class="py-4 font-label-sm text-secondary font-medium uppercase text-center">样本总数</th>
 <th class="py-4 font-label-sm text-secondary font-medium uppercase text-center">平均用时</th>
-<th class="py-4 font-label-sm text-secondary font-medium uppercase text-right">评分偏差</th>
+<th class="py-4 font-label-sm text-secondary font-medium uppercase text-right">完成进度</th>
 </tr>
 </thead>
 <tbody class="divide-y divide-outline-variant/10">
@@ -383,7 +340,6 @@
 </div>
 </div>
 </section>
-</div>
 <!-- Footer Seal Decoration -->
 <footer class="mt-24 pb-12 flex flex-col items-center opacity-30">
 <div class="seal-logo scale-75 mb-2 grayscale">墨</div>

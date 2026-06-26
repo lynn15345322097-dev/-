@@ -22,6 +22,12 @@ images/blind/*
 logs/*
 !logs/.gitkeep
 
+# 本地测试与备份
+backups/
+cookie.txt
+rate_rendered.html
+scripts/test_comparison.py
+
 # 系统
 .DS_Store
 Thumbs.db

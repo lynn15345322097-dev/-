@@ -208,9 +208,9 @@ blind_images.py ──► metadata.csv (解密) + rating_items.csv (盲评) + im
 ## MVP 规模
 
 - 4 风格 × 2 Prompt = 8 条 Prompt
-- 2 模型（M01 GPT Image 2, M02 Qwen Image 2.0 Pro）
+- 3 模型（M01 GPT Image 2, M02 Qwen Image 2.0 Pro, M03 Jimeng T2I 3.1）
 - 每 (prompt, model) 生成 2 张副本
-- 总计 **8 × 2 × 2 = 32 张图**
+- 总计 **8 × 3 × 2 = 48 张图**
 
 ## 评审者一致性
 

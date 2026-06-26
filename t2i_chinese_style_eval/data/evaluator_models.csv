@@ -2,3 +2,4 @@ evaluator_id,evaluator_name,provider,api_endpoint,model_version,role,notes
 E01,Gemini 3.5 Flash,Google,https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent,gemini-3.5-flash,primary,MVP 阶段唯一客观评价模型（2026-05-19 GA）；Gemini API key 通过 GEMINI_API_KEY 环境变量传入
 E02,Gemini 2.x Vision,Google,https://generativelanguage.googleapis.com/v1beta/models,gemini-2.0-flash,reserved_for_v1,正式版加入做交叉验证
 E03,Qwen-VL,Alibaba DashScope,https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation,qwen-vl-max,reserved_cultural_supplement,正式版作为中文文化语境补充评价
+E04,GLM-4V,Zhipu,https://open.bigmodel.cn/api/paas/v4/chat/completions,glm-4v,secondary_vision,MVP 阶段第二客观评价模型；智谱 API key 通过 ZHIPU_API_KEY 环境变量传入

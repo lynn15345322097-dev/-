@@ -146,7 +146,7 @@
 <div class="flex justify-between items-center px-4 md:px-8 lg:px-margin-desktop py-3 md:py-4 w-full max-w-container-max mx-auto">
 <div class="flex items-center gap-4 md:gap-12">
 <h1 class="text-[24px] md:text-[32px] lg:text-display-lg font-display-lg text-primary dark:text-primary tracking-tighter">SumiRate</h1>
-<nav class="hidden md:flex gap-6 lg:gap-8 items-center font-body-md text-body-md">
+<nav class="flex gap-4 md:gap-8 items-center font-body-md text-sm md:text-body-md">
 <a class="text-primary dark:text-primary border-b-2 border-primary pb-1 cursor-pointer active:opacity-70 transition-opacity" href="#">Dashboard</a>
 <a class="text-on-surface-variant dark:text-on-surface-variant hover:text-primary dark:hover:text-primary transition-colors duration-300" href="#">Gallery</a>
 <a class="text-on-surface-variant dark:text-on-surface-variant hover:text-primary dark:hover:text-primary transition-colors duration-300" href="#">Archive</a>
@@ -205,12 +205,11 @@
 </div>
 </section>
 <!-- Action Buttons Footer -->
-<div class="max-w-4xl mx-auto mt-4 flex justify-between items-center">
-<button class="flex items-center gap-2 text-secondary hover:text-primary transition-colors" type="button" onclick="location.href='/profile'">
-<span class="material-symbols-outlined">arrow_back</span>
+<div class="max-w-4xl mx-auto mt-4 flex flex-wrap justify-between items-center gap-4">
+<button class="flex items-center text-secondary hover:text-primary transition-colors" type="button" onclick="location.href='/profile'">
 <span class="font-label-sm">Return to Studio / 返回工作室</span>
 </button>
-<div class="flex gap-8">
+<div class="flex gap-4 md:gap-8">
 __PREV_BUTTON__
 </div>
 </div>
@@ -218,7 +217,7 @@ __PREV_BUTTON__
 <!-- Right Rating Sidebar -->
 <aside class="w-full lg:w-[400px] bg-surface-container-low/50 border-t lg:border-t-0 lg:border-l border-outline-variant/20 p-4 md:p-8 lg:h-screen lg:sticky lg:top-0 overflow-y-auto">
 __PROMPT_BOX__
-<h3 class="font-headline-md text-headline-md mb-6 border-b border-primary/10 pb-4">Rating Form / 评审表</h3>
+<h3 class="font-headline-md text-headline-md mb-6 border-b border-primary/10 pb-4">Rating Form / 评审表 __PROGRESS__</h3>
 <form class="flex flex-col gap-12" id="ratingForm">
 <!-- Numeric Scales -->
 <div class="space-y-10">
@@ -285,7 +284,6 @@ __PROMPT_BOX__
 <button class="w-full bg-primary text-white py-6 flex items-center justify-center gap-4 group overflow-hidden relative transition-all active:scale-95" id="applySealBtn" type="submit">
 <span class="font-headline-md tracking-widest z-10">Apply Seal / 落款评定</span>
 <div class="absolute inset-0 bg-red-800 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
-<span class="material-symbols-outlined z-10 group-hover:text-white transition-colors">approval</span>
 </button>
 </div>
 </form>
