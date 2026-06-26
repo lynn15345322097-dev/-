@@ -1,0 +1,1 @@
+score_id,image_id,evaluator_id,evaluated_at,style_fidelity,element_accuracy,context_appropriateness,forbidden_compliance,overall_score,expected_hits,forbidden_hits,raw_response_json,error_message

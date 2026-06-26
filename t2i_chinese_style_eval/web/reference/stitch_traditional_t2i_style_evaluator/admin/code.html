@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+
+<html class="light" lang="zh-CN"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>SumiRate | 评分管理仪表盘</title>
+<!-- Google Fonts: EB Garamond (Serif), Work Sans (Sans), JetBrains Mono (Monospace) -->
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@400;500;600&amp;family=Work+Sans:wght@300;400;500&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols Outlined -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                "on-primary-container": "#858383",
+                "surface-container-lowest": "#ffffff",
+                "tertiary": "#000000",
+                "on-error-container": "#93000a",
+                "surface-dim": "#dadad5",
+                "background": "#fafaf5",
+                "inverse-primary": "#c8c6c5",
+                "error-container": "#ffdad6",
+                "surface-tint": "#5f5e5e",
+                "error": "#ba1a1a",
+                "on-primary-fixed": "#1c1b1b",
+                "on-secondary-fixed-variant": "#464747",
+                "primary": "#000000",
+                "on-secondary": "#ffffff",
+                "on-tertiary-fixed": "#1a1c1c",
+                "inverse-on-surface": "#f1f1ec",
+                "secondary-fixed": "#e3e2e2",
+                "on-secondary-fixed": "#1b1c1c",
+                "on-primary": "#ffffff",
+                "secondary": "#5e5e5e",
+                "surface-variant": "#e3e3de",
+                "on-surface-variant": "#444748",
+                "inverse-surface": "#2f312e",
+                "secondary-container": "#e3e2e2",
+                "outline-variant": "#c4c7c7",
+                "secondary-fixed-dim": "#c7c6c6",
+                "tertiary-fixed": "#e3e2e2",
+                "on-tertiary-fixed-variant": "#464747",
+                "primary-fixed-dim": "#c8c6c5",
+                "on-secondary-container": "#646464",
+                "on-primary-fixed-variant": "#474746",
+                "surface-bright": "#fafaf5",
+                "on-tertiary": "#ffffff",
+                "primary-container": "#1c1b1b",
+                "surface-container": "#eeeee9",
+                "tertiary-fixed-dim": "#c7c6c6",
+                "on-background": "#1a1c19",
+                "tertiary-container": "#1a1c1c",
+                "outline": "#747878",
+                "surface-container-low": "#f4f4ef",
+                "on-tertiary-container": "#838484",
+                "primary-fixed": "#e5e2e1",
+                "on-surface": "#1a1c19",
+                "surface-container-highest": "#e3e3de",
+                "surface": "#fafaf5",
+                "surface-container-high": "#e8e8e3",
+                "on-error": "#ffffff"
+            },
+            "borderRadius": {
+                "DEFAULT": "0.125rem",
+                "lg": "0.25rem",
+                "xl": "0.5rem",
+                "full": "0.75rem"
+            },
+            "spacing": {
+                "container-max": "1140px",
+                "margin-desktop": "64px",
+                "gutter": "24px",
+                "margin-mobile": "16px",
+                "unit": "8px"
+            },
+            "fontFamily": {
+                "body-lg": ["Work Sans"],
+                "display-lg-mobile": ["EB Garamond"],
+                "headline-md": ["EB Garamond"],
+                "label-sm": ["JetBrains Mono"],
+                "display-lg": ["EB Garamond"],
+                "body-md": ["Work Sans"]
+            },
+            "fontSize": {
+                "body-lg": ["18px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                "display-lg-mobile": ["32px", {"lineHeight": "1.2", "fontWeight": "500"}],
+                "headline-md": ["24px", {"lineHeight": "1.3", "fontWeight": "500"}],
+                "label-sm": ["12px", {"lineHeight": "1.0", "letterSpacing": "0.05em", "fontWeight": "500"}],
+                "display-lg": ["48px", {"lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "500"}],
+                "body-md": ["16px", {"lineHeight": "1.5", "fontWeight": "400"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        
+        .ink-bleed {
+            filter: blur(8px);
+            opacity: 0.15;
+            pointer-events: none;
+        }
+        
+        .brush-border {
+            border: 1px solid;
+            border-image: linear-gradient(to right, rgba(0,0,0,0.1), rgba(0,0,0,0.8), rgba(0,0,0,0.1)) 1;
+        }
+
+        .seal-logo {
+            width: 32px;
+            height: 32px;
+            background: #ba1a1a;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'EB Garamond', serif;
+            font-weight: bold;
+            border-radius: 2px;
+            box-shadow: 0 2px 4px rgba(186, 26, 26, 0.2);
+        }
+
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #fafaf5;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #dadad5;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface font-body-md selection:bg-primary/10">
+<!-- TopNavBar -->
+<header class="w-full top-0 sticky bg-surface border-b border-outline-variant/30 z-50">
+<div class="flex justify-between items-center px-margin-desktop py-4 w-full max-w-container-max mx-auto">
+<div class="flex items-center gap-4">
+<div class="seal-logo">墨</div>
+<h1 class="font-display-lg text-display-lg text-primary tracking-tighter">SumiRate</h1>
+</div>
+<nav class="hidden md:flex gap-8 items-center">
+<a class="font-body-md text-primary border-b-2 border-primary pb-1 transition-colors duration-300" href="#">Dashboard</a>
+<a class="font-body-md text-on-surface-variant hover:text-primary transition-colors duration-300" href="#">Gallery</a>
+<a class="font-body-md text-on-surface-variant hover:text-primary transition-colors duration-300" href="#">Archive</a>
+</nav>
+<div class="flex items-center gap-6">
+<span class="font-label-sm text-secondary cursor-pointer hover:text-primary transition-colors">Reviewer Status</span>
+<button class="font-body-md text-primary cursor-pointer active:opacity-70 transition-opacity">Logout</button>
+</div>
+</div>
+</header>
+<div class="flex min-h-screen">
+<!-- SideNavBar -->
+<aside class="h-screen w-64 fixed left-0 top-0 pt-24 flex flex-col gap-unit px-4 border-r border-outline-variant/20 bg-surface-container-low z-40">
+<div class="px-4 mb-8">
+<div class="flex items-center gap-3 mb-2">
+<div class="w-10 h-10 rounded-full bg-surface-variant flex items-center justify-center overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="A refined charcoal portrait of a professional Chinese calligrapher in a minimalist, high-key studio. The portrait captures deep focus and artistic wisdom, set against a background of soft paper textures and subtle grey washes, embodying the zen-like SumiRate aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDvkGLflZXWIQSCKWaBXFeWrcwaG2pgPmtJ3Pn4zDQ3qOCOMGv0W7O9hySU1w565YZrwlC49twfKLBoXdzPgufERazHpRsnZ138vDkcIjsM2knypOrbWSKWIgutHPlS-_4cgpyAIYEeagj5ut7d5eL0UpY5FBEWCajCurXJKFl5K1cBv_mygXxzbv1yv67_en_XFyGkrkSo0FPX-hXAlTQgyl560BJoftT_Tp3NzY6z2hj52FNje1Pk7a0uAAi1F9GFi5OPjgFvpJg"/>
+</div>
+<div>
+<p class="font-headline-md text-primary text-[16px] leading-tight">Inspector 01</p>
+<p class="font-label-sm text-secondary">Ink Master Level</p>
+</div>
+</div>
+</div>
+<nav class="space-y-1">
+<a class="flex items-center gap-3 bg-secondary-container text-primary rounded-lg px-4 py-3 hover:translate-x-1 transition-all duration-300" href="#">
+<span class="material-symbols-outlined">search_check</span>
+<span class="font-label-sm">Inspector</span>
+</a>
+<a class="flex items-center gap-3 text-secondary px-4 py-3 hover:bg-surface-container-highest rounded-lg hover:translate-x-1 transition-all duration-300" href="#">
+<span class="material-symbols-outlined">grid_view</span>
+<span class="font-label-sm">Composition</span>
+</a>
+<a class="flex items-center gap-3 text-secondary px-4 py-3 hover:bg-surface-container-highest rounded-lg hover:translate-x-1 transition-all duration-300" href="#">
+<span class="material-symbols-outlined">gradient</span>
+<span class="font-label-sm">Tone</span>
+</a>
+<a class="flex items-center gap-3 text-secondary px-4 py-3 hover:bg-surface-container-highest rounded-lg hover:translate-x-1 transition-all duration-300" href="#">
+<span class="material-symbols-outlined">contrast</span>
+<span class="font-label-sm">Contrast</span>
+</a>
+<a class="flex items-center gap-3 text-secondary px-4 py-3 hover:bg-surface-container-highest rounded-lg hover:translate-x-1 transition-all duration-300" href="#">
+<span class="material-symbols-outlined">approval</span>
+<span class="font-label-sm">Stamp</span>
+</a>
+</nav>
+<div class="mt-auto pb-12 px-4">
+<button class="w-full py-3 bg-primary text-on-primary font-label-sm rounded shadow-sm hover:bg-secondary transition-colors">
+                    Finalize Rating
+                </button>
+</div>
+</aside>
+<!-- Main Content -->
+<main class="flex-1 ml-64 p-margin-desktop bg-background overflow-y-auto">
+<div class="max-w-container-max mx-auto space-y-12">
+<!-- Page Header -->
+<section class="flex justify-between items-end">
+<div>
+<h2 class="font-headline-md text-display-lg text-primary">评分管理概览</h2>
+<p class="font-body-md text-secondary mt-2 max-w-2xl">监控当前评分进程，分析评审质量与进度，管理核心数据流转。</p>
+</div>
+<div class="flex gap-4">
+<button class="px-6 py-2 brush-border font-label-sm flex items-center gap-2 hover:bg-surface-container-low transition-all">
+<span class="material-symbols-outlined">upload_file</span>
+                            Import Samples
+                        </button>
+<button class="px-6 py-2 bg-primary text-on-primary font-label-sm flex items-center gap-2 hover:opacity-90 transition-all">
+<span class="material-symbols-outlined">download</span>
+                            Export Scores
+                        </button>
+</div>
+</section>
+<!-- Statistics Bento Grid -->
+<section class="grid grid-cols-1 md:grid-cols-3 gap-8">
+<!-- Progress Chart Card -->
+<div class="md:col-span-2 bg-surface-container-lowest border border-outline-variant/20 p-8 relative overflow-hidden group">
+<div class="flex justify-between items-start mb-12">
+<div>
+<h3 class="font-headline-md text-primary">完成进度 (Completion)</h3>
+<p class="font-label-sm text-secondary mt-1">本周评审样本总量：1,240</p>
+</div>
+<span class="font-display-lg text-primary">84%</span>
+</div>
+<!-- Ink Wash Style Chart Placeholder -->
+<div class="h-48 flex items-end gap-4 relative">
+<!-- Subtle Ink Bleed Effect -->
+<div class="absolute inset-0 ink-bleed bg-gradient-to-t from-primary to-transparent"></div>
+<div class="flex-1 bg-primary/80 h-[40%] hover:h-[45%] transition-all duration-700"></div>
+<div class="flex-1 bg-primary/60 h-[60%] hover:h-[65%] transition-all duration-700"></div>
+<div class="flex-1 bg-primary/90 h-[84%] hover:h-[89%] transition-all duration-700"></div>
+<div class="flex-1 bg-primary/40 h-[30%] hover:h-[35%] transition-all duration-700"></div>
+<div class="flex-1 bg-primary/70 h-[55%] hover:h-[60%] transition-all duration-700"></div>
+<div class="flex-1 bg-primary/50 h-[70%] hover:h-[75%] transition-all duration-700"></div>
+<div class="flex-1 bg-primary/30 h-[20%] hover:h-[25%] transition-all duration-700"></div>
+</div>
+<div class="flex justify-between mt-4 font-label-sm text-secondary">
+<span>MON</span><span>TUE</span><span>WED</span><span>THU</span><span>FRI</span><span>SAT</span><span>SUN</span>
+</div>
+</div>
+<!-- Metric Card 1 -->
+<div class="bg-surface-container-high border border-outline-variant/20 p-8 flex flex-col justify-between">
+<div>
+<p class="font-label-sm text-secondary uppercase tracking-widest">Active Reviewers</p>
+<h4 class="font-display-lg text-primary mt-2">12</h4>
+</div>
+<div class="space-y-4">
+<div class="flex justify-between items-center text-sm border-b border-outline-variant/30 pb-2">
+<span class="text-secondary">On-duty</span>
+<span class="font-label-sm text-primary">08</span>
+</div>
+<div class="flex justify-between items-center text-sm border-b border-outline-variant/30 pb-2">
+<span class="text-secondary">Pending Approval</span>
+<span class="font-label-sm text-primary">04</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Reviewers Table Section -->
+<section class="space-y-6">
+<div class="flex items-center justify-between">
+<h3 class="font-headline-md text-primary">活跃评审员指标</h3>
+<div class="flex items-center gap-2 text-secondary font-label-sm">
+<span class="material-symbols-outlined text-[18px]">filter_list</span>
+<span>Filter by Level</span>
+</div>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="border-b border-primary/10">
+<th class="py-4 font-label-sm text-secondary font-medium uppercase">评审员 (Reviewer)</th>
+<th class="py-4 font-label-sm text-secondary font-medium uppercase">等级 (Level)</th>
+<th class="py-4 font-label-sm text-secondary font-medium uppercase text-center">样本总数</th>
+<th class="py-4 font-label-sm text-secondary font-medium uppercase text-center">平均用时</th>
+<th class="py-4 font-label-sm text-secondary font-medium uppercase text-right">评分偏差</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant/10">
+<tr class="group hover:bg-surface-container-low transition-colors">
+<td class="py-6 flex items-center gap-4">
+<div class="w-8 h-8 rounded-full bg-surface-dim flex items-center justify-center font-display-lg text-[14px]">L</div>
+<div>
+<p class="font-body-md text-primary">Li Wei</p>
+<p class="text-[11px] text-secondary">li.wei@sumirate.com</p>
+</div>
+</td>
+<td class="py-6 font-label-sm">Master</td>
+<td class="py-6 font-label-sm text-center">432</td>
+<td class="py-6 font-label-sm text-center">4.2 min</td>
+<td class="py-6 text-right">
+<span class="px-3 py-1 bg-surface-container text-[11px] font-label-sm text-primary">+0.04</span>
+</td>
+</tr>
+<tr class="group hover:bg-surface-container-low transition-colors">
+<td class="py-6 flex items-center gap-4">
+<div class="w-8 h-8 rounded-full bg-surface-dim flex items-center justify-center font-display-lg text-[14px]">Z</div>
+<div>
+<p class="font-body-md text-primary">Zhang Min</p>
+<p class="text-[11px] text-secondary">z.min@sumirate.com</p>
+</div>
+</td>
+<td class="py-6 font-label-sm">Senior</td>
+<td class="py-6 font-label-sm text-center">318</td>
+<td class="py-6 font-label-sm text-center">5.8 min</td>
+<td class="py-6 text-right">
+<span class="px-3 py-1 bg-surface-container text-[11px] font-label-sm text-primary">-0.12</span>
+</td>
+</tr>
+<tr class="group hover:bg-surface-container-low transition-colors">
+<td class="py-6 flex items-center gap-4">
+<div class="w-8 h-8 rounded-full bg-surface-dim flex items-center justify-center font-display-lg text-[14px]">C</div>
+<div>
+<p class="font-body-md text-primary">Chen Yu</p>
+<p class="text-[11px] text-secondary">chen.yu@sumirate.com</p>
+</div>
+</td>
+<td class="py-6 font-label-sm">Ink Level II</td>
+<td class="py-6 font-label-sm text-center">215</td>
+<td class="py-6 font-label-sm text-center">6.1 min</td>
+<td class="py-6 text-right">
+<span class="px-3 py-1 bg-surface-container text-[11px] font-label-sm text-primary">+0.08</span>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<!-- Data IO & Recent Activity -->
+<section class="grid grid-cols-1 md:grid-cols-2 gap-8 pt-12 border-t border-outline-variant/30">
+<!-- Data IO Action Area -->
+<div class="space-y-6">
+<h3 class="font-headline-md text-primary">数据管理</h3>
+<div class="grid grid-cols-2 gap-4">
+<div class="p-6 border border-outline-variant/40 flex flex-col items-center justify-center text-center group cursor-pointer hover:bg-surface-container-high transition-all">
+<div class="w-12 h-12 flex items-center justify-center bg-surface-container rounded-full mb-4 group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-primary">upload</span>
+</div>
+<p class="font-label-sm text-primary mb-1">导入新样本</p>
+<p class="text-[11px] text-secondary">JSON, CSV, ZIP</p>
+</div>
+<div class="p-6 border border-outline-variant/40 flex flex-col items-center justify-center text-center group cursor-pointer hover:bg-surface-container-high transition-all">
+<div class="w-12 h-12 flex items-center justify-center bg-surface-container rounded-full mb-4 group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-primary">history</span>
+</div>
+<p class="font-label-sm text-primary mb-1">历史记录</p>
+<p class="text-[11px] text-secondary">查看过去30天</p>
+</div>
+</div>
+</div>
+<!-- Recent Updates -->
+<div class="space-y-6">
+<h3 class="font-headline-md text-primary">最近动态</h3>
+<div class="space-y-4">
+<div class="flex gap-4">
+<div class="h-10 w-[2px] bg-primary/20"></div>
+<div>
+<p class="font-body-md text-primary text-sm">样本批次 #A904 评审已完成</p>
+<p class="font-label-sm text-secondary">2 hours ago • Automated Notification</p>
+</div>
+</div>
+<div class="flex gap-4">
+<div class="h-10 w-[2px] bg-primary/20"></div>
+<div>
+<p class="font-body-md text-primary text-sm">评审员 Li Wei 获得了 Ink Master 认证</p>
+<p class="font-label-sm text-secondary">5 hours ago • System Log</p>
+</div>
+</div>
+<div class="flex gap-4">
+<div class="h-10 w-[2px] bg-primary/20"></div>
+<div>
+<p class="font-body-md text-primary text-sm">服务器导出队列正在处理中 (64%)</p>
+<p class="font-label-sm text-secondary">Just now • Performance Monitor</p>
+</div>
+</div>
+</div>
+</div>
+</section>
+</div>
+<!-- Footer Seal Decoration -->
+<footer class="mt-24 pb-12 flex flex-col items-center opacity-30">
+<div class="seal-logo scale-75 mb-2 grayscale">墨</div>
+<p class="font-label-sm text-[10px] tracking-[0.2em] uppercase">SumiRate Intelligent Rating System</p>
+</footer>
+</main>
+</div>
+<!-- Micro-interaction Scripts -->
+<script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Simple hover effect for chart bars
+            const bars = document.querySelectorAll('.flex-1.bg-primary\\/80, .flex-1.bg-primary\\/60, .flex-1.bg-primary\\/90, .flex-1.bg-primary\\/40, .flex-1.bg-primary\\/70, .flex-1.bg-primary\\/50, .flex-1.bg-primary\\/30');
+            
+            bars.forEach(bar => {
+                bar.addEventListener('mouseenter', () => {
+                    bar.style.filter = 'drop-shadow(0 0 4px rgba(0,0,0,0.2))';
+                });
+                bar.addEventListener('mouseleave', () => {
+                    bar.style.filter = 'none';
+                });
+            });
+
+            // Smooth appear animation for cards
+            const cards = document.querySelectorAll('section > div');
+            cards.forEach((card, index) => {
+                card.style.opacity = '0';
+                card.style.transform = 'translateY(10px)';
+                setTimeout(() => {
+                    card.style.transition = 'all 0.6s cubic-bezier(0.23, 1, 0.32, 1)';
+                    card.style.opacity = '1';
+                    card.style.transform = 'translateY(0)';
+                }, 100 * index);
+            });
+        });
+    </script>
+</body></html>

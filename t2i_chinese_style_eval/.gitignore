@@ -1,0 +1,26 @@
+# 环境变量与密钥
+.env
+.env.local
+*.key
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+.pytest_cache/
+
+# 图片生成产物（按需调整：若想纳入版本控制，删掉下面两行）
+images/raw/*
+images/blind/*
+!images/raw/.gitkeep
+!images/blind/.gitkeep
+
+# 日志
+logs/*
+!logs/.gitkeep
+
+# 系统
+.DS_Store
+Thumbs.db

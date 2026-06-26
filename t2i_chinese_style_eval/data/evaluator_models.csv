@@ -1,0 +1,4 @@
+evaluator_id,evaluator_name,provider,api_endpoint,model_version,role,notes
+E01,GPT-4o Vision,OpenAI,https://api.openai.com/v1/chat/completions,gpt-4o,primary,MVP 阶段唯一客观评价模型；结构化 JSON 输出
+E02,Gemini 2.x Vision,Google,https://generativelanguage.googleapis.com/v1beta/models,gemini-2.0-flash,reserved_for_v1,正式版加入做交叉验证
+E03,Qwen-VL,Alibaba DashScope,https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation,qwen-vl-max,reserved_cultural_supplement,正式版作为中文文化语境补充评价

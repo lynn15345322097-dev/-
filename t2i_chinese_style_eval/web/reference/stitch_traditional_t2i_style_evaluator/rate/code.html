@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+
+<html class="light" lang="zh-CN"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>SumiRate | 墨评 - 核心评分界面</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@400;500;700&amp;family=Work+Sans:wght@300;400;500;600&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                "on-primary-container": "#858383",
+                "surface-container-lowest": "#ffffff",
+                "tertiary": "#000000",
+                "on-error-container": "#93000a",
+                "surface-dim": "#dadad5",
+                "background": "#fafaf5",
+                "inverse-primary": "#c8c6c5",
+                "error-container": "#ffdad6",
+                "surface-tint": "#5f5e5e",
+                "error": "#ba1a1a",
+                "on-primary-fixed": "#1c1b1b",
+                "on-secondary-fixed-variant": "#464747",
+                "primary": "#000000",
+                "on-secondary": "#ffffff",
+                "on-tertiary-fixed": "#1a1c1c",
+                "inverse-on-surface": "#f1f1ec",
+                "secondary-fixed": "#e3e2e2",
+                "on-secondary-fixed": "#1b1c1c",
+                "on-primary": "#ffffff",
+                "secondary": "#5e5e5e",
+                "surface-variant": "#e3e3de",
+                "on-surface-variant": "#444748",
+                "inverse-surface": "#2f312e",
+                "secondary-container": "#e3e2e2",
+                "outline-variant": "#c4c7c7",
+                "secondary-fixed-dim": "#c7c6c6",
+                "tertiary-fixed": "#e3e2e2",
+                "on-tertiary-fixed-variant": "#464747",
+                "primary-fixed-dim": "#c8c6c5",
+                "on-secondary-container": "#646464",
+                "on-primary-fixed-variant": "#474746",
+                "surface-bright": "#fafaf5",
+                "on-tertiary": "#ffffff",
+                "primary-container": "#1c1b1b",
+                "surface-container": "#eeeee9",
+                "tertiary-fixed-dim": "#c7c6c6",
+                "on-background": "#1a1c19",
+                "tertiary-container": "#1a1c1c",
+                "outline": "#747878",
+                "surface-container-low": "#f4f4ef",
+                "on-tertiary-container": "#838484",
+                "primary-fixed": "#e5e2e1",
+                "on-surface": "#1a1c19",
+                "surface-container-highest": "#e3e3de",
+                "surface": "#fafaf5",
+                "surface-container-high": "#e8e8e3",
+                "on-error": "#ffffff"
+            },
+            "borderRadius": {
+                "DEFAULT": "0.125rem",
+                "lg": "0.25rem",
+                "xl": "0.5rem",
+                "full": "0.75rem"
+            },
+            "spacing": {
+                "container-max": "1140px",
+                "margin-desktop": "64px",
+                "gutter": "24px",
+                "margin-mobile": "16px",
+                "unit": "8px"
+            },
+            "fontFamily": {
+                "body-lg": ["Work Sans"],
+                "display-lg-mobile": ["EB Garamond"],
+                "headline-md": ["EB Garamond"],
+                "label-sm": ["JetBrains Mono"],
+                "display-lg": ["EB Garamond"],
+                "body-md": ["Work Sans"]
+            },
+            "fontSize": {
+                "body-lg": ["18px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                "display-lg-mobile": ["32px", {"lineHeight": "1.2", "fontWeight": "500"}],
+                "headline-md": ["24px", {"lineHeight": "1.3", "fontWeight": "500"}],
+                "label-sm": ["12px", {"lineHeight": "1.0", "letterSpacing": "0.05em", "fontWeight": "500"}],
+                "display-lg": ["48px", {"lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "500"}],
+                "body-md": ["16px", {"lineHeight": "1.5", "fontWeight": "400"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            display: inline-block;
+            vertical-align: middle;
+        }
+        
+        .ink-bleed {
+            filter: blur(14px);
+            opacity: 0.15;
+            background: radial-gradient(circle, #000 0%, transparent 70%);
+        }
+
+        .brush-frame {
+            mask-image: url("data:image/svg+xml,%3Csvg width='500' height='500' viewBox='0 0 500 500' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M20 20C50 15 150 10 250 15C350 20 450 30 480 50C490 100 485 200 480 300C475 400 460 470 430 485C350 500 200 495 100 480C50 465 15 440 20 350C25 250 15 100 20 20Z' fill='black'/%3E%3C/svg%3E");
+            mask-size: 100% 100%;
+            mask-repeat: no-repeat;
+        }
+
+        .rating-input:checked + label {
+            background-color: #000;
+            color: #fff;
+        }
+
+        .seal-transition {
+            transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        
+        body {
+            background-color: #fafaf5;
+            color: #1a1c19;
+            cursor: url('https://cdn-icons-png.flaticon.com/32/3011/3011153.png'), auto;
+        }
+
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #fafaf5;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #e3e3de;
+        }
+    </style>
+</head>
+<body class="font-body-md text-body-md overflow-x-hidden min-h-screen">
+<!-- TopNavBar Cluster -->
+<header class="w-full top-0 sticky bg-surface dark:bg-surface border-b border-outline-variant/30 dark:border-outline-variant/10 z-50">
+<div class="flex justify-between items-center px-margin-desktop py-4 w-full max-w-container-max mx-auto">
+<div class="flex items-center gap-12">
+<h1 class="font-display-lg text-display-lg text-primary dark:text-primary tracking-tighter">SumiRate</h1>
+<nav class="hidden md:flex gap-8 items-center font-body-md text-body-md">
+<a class="text-primary dark:text-primary border-b-2 border-primary pb-1 cursor-pointer active:opacity-70 transition-opacity" href="#">Dashboard</a>
+<a class="text-on-surface-variant dark:text-on-surface-variant hover:text-primary dark:hover:text-primary transition-colors duration-300" href="#">Gallery</a>
+<a class="text-on-surface-variant dark:text-on-surface-variant hover:text-primary dark:hover:text-primary transition-colors duration-300" href="#">Archive</a>
+</nav>
+</div>
+<div class="flex items-center gap-6">
+<button class="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors">Reviewer Status</button>
+<button class="font-body-md text-body-md text-primary font-semibold hover:opacity-70 transition-opacity">Logout</button>
+</div>
+</div>
+</header>
+<main class="flex min-h-[calc(100vh-80px)]">
+<!-- SideNav: Inspector Context -->
+<aside class="hidden md:flex h-screen w-64 sticky top-20 flex-col gap-unit py-margin-desktop px-4 border-r border-outline-variant/20 bg-surface-container-low dark:bg-surface-container-low">
+<div class="mb-12">
+<h3 class="font-headline-md text-headline-md text-primary">Inspector 01</h3>
+<p class="font-label-sm text-label-sm text-secondary">Ink Master Level</p>
+</div>
+<nav class="flex flex-col gap-2">
+<div class="flex items-center gap-3 bg-secondary-container dark:bg-secondary-container text-primary dark:text-primary rounded-lg px-4 py-3 hover:translate-x-1 transition-transform duration-300 cursor-pointer">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">search_check</span>
+<span class="font-label-sm text-label-sm">Inspector</span>
+</div>
+<div class="flex items-center gap-3 text-secondary dark:text-secondary px-4 py-3 hover:bg-surface-container-highest dark:hover:bg-surface-container-highest transition-all duration-500 hover:translate-x-1 cursor-pointer">
+<span class="material-symbols-outlined">grid_view</span>
+<span class="font-label-sm text-label-sm">Composition</span>
+</div>
+<div class="flex items-center gap-3 text-secondary dark:text-secondary px-4 py-3 hover:bg-surface-container-highest dark:hover:bg-surface-container-highest transition-all duration-500 hover:translate-x-1 cursor-pointer">
+<span class="material-symbols-outlined">gradient</span>
+<span class="font-label-sm text-label-sm">Tone</span>
+</div>
+<div class="flex items-center gap-3 text-secondary dark:text-secondary px-4 py-3 hover:bg-surface-container-highest dark:hover:bg-surface-container-highest transition-all duration-500 hover:translate-x-1 cursor-pointer">
+<span class="material-symbols-outlined">contrast</span>
+<span class="font-label-sm text-label-sm">Contrast</span>
+</div>
+<div class="flex items-center gap-3 text-secondary dark:text-secondary px-4 py-3 hover:bg-surface-container-highest dark:hover:bg-surface-container-highest transition-all duration-500 hover:translate-x-1 cursor-pointer">
+<span class="material-symbols-outlined">approval</span>
+<span class="font-label-sm text-label-sm">Stamp</span>
+</div>
+</nav>
+<div class="mt-auto pb-24">
+<button class="w-full py-4 px-6 border border-primary text-primary font-bold hover:bg-primary hover:text-white transition-all duration-500 text-label-sm">
+                    Finalize Rating
+                </button>
+</div>
+</aside>
+<!-- Main Content Canvas -->
+<div class="flex-1 px-margin-desktop py-8 relative overflow-hidden">
+<!-- Global Reminder -->
+<div class="max-w-3xl mx-auto mb-12 flex items-center justify-center gap-3 py-2 px-6 bg-surface-container-high rounded-full">
+<span class="material-symbols-outlined text-secondary text-sm">info</span>
+<span class="font-label-sm text-label-sm tracking-widest uppercase opacity-80">Judge by consistency, not preference | 随物婉转，与心徘徊</span>
+</div>
+<!-- Content Header Area -->
+<div class="max-w-4xl mx-auto mb-16 grid grid-cols-1 md:grid-cols-2 gap-12 border-b border-outline-variant/30 pb-12">
+<div>
+<span class="font-label-sm text-label-sm text-secondary uppercase tracking-widest mb-2 block">Target Style / 目标风格</span>
+<h2 class="font-headline-md text-headline-md">High-Dynasty Ink Landscape (宋代水墨山水)</h2>
+</div>
+<div>
+<span class="font-label-sm text-label-sm text-secondary uppercase tracking-widest mb-2 block">Prompt Context / 提示语背景</span>
+<p class="font-body-md text-body-md italic text-on-surface-variant">"Mountains shrouded in mist, lone pine on the ridge, distant boats on silent water, expressive brushwork."</p>
+</div>
+</div>
+<!-- Image Inspection Area -->
+<section class="max-w-4xl mx-auto relative group">
+<div class="absolute -inset-10 ink-bleed rounded-full"></div>
+<div class="relative aspect-square md:aspect-[4/3] bg-surface-container flex items-center justify-center p-8 overflow-hidden brush-frame bg-white">
+<img class="w-full h-full object-contain filter grayscale contrast-125 transition-transform duration-700 group-hover:scale-[1.02]" data-alt="A sublime and atmospheric Chinese ink wash painting featuring a grand mountain range disappearing into a soft white mist. In the foreground, a gnarled, weathered pine tree stands heroically on a rocky outcropping, rendered with bold, jagged black ink strokes. The lighting is ethereal and diffused, creating a serene, high-key minimalist aesthetic with deep black ink contrasts. The composition follows traditional landscape scrolls, emphasizing empty space and spiritual tranquility in a modern light-mode UI context." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBleeff-Ofj14uKDDtSIqCjnAZkHlxT8cOPI1ueeJOIbGN_5tVFatJMwRytlB_MADW3S6NQrpxyDtbu9dBogXaLm_coFnle7UMkC14J_JJwzEq-kWv2jdlq6uY2V1UyqbTH1p_0qJJN-mc34w213OwossAsFOAZH6F0rNtGuzVWWjX7PrPKwx6a3Q5TOipMht_B3xDEKUeTKo-I9qW-yPjMd0WkGJItT-Ws71DQ3UurW81ejjeI4FItVOTTKmOGJUSeq6oFQvmYI4Y"/>
+</div>
+<!-- Floating Labels/Seal for Aesthetic -->
+<div class="absolute top-4 right-12 w-12 h-12 border-2 border-red-800 text-red-800 flex items-center justify-center font-display-lg text-sm opacity-60 mix-blend-multiply rotate-12">
+<span class="font-bold">审核</span>
+</div>
+</section>
+<!-- Action Buttons Footer -->
+<div class="max-w-4xl mx-auto mt-16 flex justify-between items-center">
+<button class="flex items-center gap-2 text-secondary hover:text-primary transition-colors">
+<span class="material-symbols-outlined">arrow_back</span>
+<span class="font-label-sm">Return to Studio / 返回工作室</span>
+</button>
+<div class="flex gap-8">
+<button class="px-8 py-3 text-on-surface-variant hover:text-error transition-colors border-b border-transparent hover:border-error">Skip / 跳过</button>
+</div>
+</div>
+</div>
+<!-- Right Rating Sidebar -->
+<aside class="w-[400px] bg-surface-container-low/50 border-l border-outline-variant/20 p-8 h-screen sticky top-0 overflow-y-auto">
+<h3 class="font-headline-md text-headline-md mb-12 border-b border-primary/10 pb-4">Rating Form / 评审表</h3>
+<form class="flex flex-col gap-12" id="ratingForm">
+<!-- Numeric Scales -->
+<div class="space-y-10">
+<!-- Style Consistency -->
+<div class="group">
+<label class="flex justify-between items-end mb-4">
+<span class="font-body-md font-semibold">Style / 风格相符度</span>
+<span class="font-label-sm text-secondary">Scale 1-5</span>
+</label>
+<div class="flex justify-between gap-2">
+<input class="hidden rating-input" id="s1" name="style" type="radio"/><label class="flex-1 h-10 border border-outline flex items-center justify-center cursor-pointer hover:bg-surface-container-highest transition-colors font-label-sm" for="s1">1</label>
+<input class="hidden rating-input" id="s2" name="style" type="radio"/><label class="flex-1 h-10 border border-outline flex items-center justify-center cursor-pointer hover:bg-surface-container-highest transition-colors font-label-sm" for="s2">2</label>
+<input class="hidden rating-input" id="s3" name="style" type="radio"/><label class="flex-1 h-10 border border-outline flex items-center justify-center cursor-pointer hover:bg-surface-container-highest transition-colors font-label-sm" for="s3">3</label>
+<input checked="" class="hidden rating-input" id="s4" name="style" type="radio"/><label class="flex-1 h-10 border border-outline flex items-center justify-center cursor-pointer hover:bg-surface-container-highest transition-colors font-label-sm" for="s4">4</label>
+<input class="hidden rating-input" id="s5" name="style" type="radio"/><label class="flex-1 h-10 border border-outline flex items-center justify-center cursor-pointer hover:bg-surface-container-highest transition-colors font-label-sm" for="s5">5</label>
+</div>
+</div>
+<!-- Accuracy -->
+<div class="group">
+<label class="flex justify-between items-end mb-4">
+<span class="font-body-md font-semibold">Accuracy / 意境准确性</span>
+<span class="font-label-sm text-secondary">Scale 1-5</span>
+</label>
+<div class="flex justify-between gap-2">
+<input class="hidden rating-input" id="a1" name="accuracy" type="radio"/><label class="flex-1 h-10 border border-outline flex items-center justify-center cursor-pointer hover:bg-surface-container-highest transition-colors font-label-sm" for="a1">1</label>
+<input class="hidden rating-input" id="a2" name="accuracy" type="radio"/><label class="flex-1 h-10 border border-outline flex items-center justify-center cursor-pointer hover:bg-surface-container-highest transition-colors font-label-sm" for="a2">2</label>
+<input class="hidden rating-input" id="a3" name="accuracy" type="radio"/><label class="flex-1 h-10 border border-outline flex items-center justify-center cursor-pointer hover:bg-surface-container-highest transition-colors font-label-sm" for="a3">3</label>
+<input checked="" class="hidden rating-input" id="a4" name="accuracy" type="radio"/><label class="flex-1 h-10 border border-outline flex items-center justify-center cursor-pointer hover:bg-surface-container-highest transition-colors font-label-sm" for="a4">4</label>
+<input class="hidden rating-input" id="a5" name="accuracy" type="radio"/><label class="flex-1 h-10 border border-outline flex items-center justify-center cursor-pointer hover:bg-surface-container-highest transition-colors font-label-sm" for="a5">5</label>
+</div>
+</div>
+<!-- Propriety -->
+<div class="group">
+<label class="flex justify-between items-end mb-4">
+<span class="font-body-md font-semibold">Propriety / 笔墨得体</span>
+<span class="font-label-sm text-secondary">Scale 1-5</span>
+</label>
+<div class="flex justify-between gap-2">
+<input class="hidden rating-input" id="p1" name="propriety" type="radio"/><label class="flex-1 h-10 border border-outline flex items-center justify-center cursor-pointer hover:bg-surface-container-highest transition-colors font-label-sm" for="p1">1</label>
+<input class="hidden rating-input" id="p2" name="propriety" type="radio"/><label class="flex-1 h-10 border border-outline flex items-center justify-center cursor-pointer hover:bg-surface-container-highest transition-colors font-label-sm" for="p2">2</label>
+<input class="hidden rating-input" id="p3" name="propriety" type="radio"/><label class="flex-1 h-10 border border-outline flex items-center justify-center cursor-pointer hover:bg-surface-container-highest transition-colors font-label-sm" for="p3">3</label>
+<input class="hidden rating-input" id="p4" name="propriety" type="radio"/><label class="flex-1 h-10 border border-outline flex items-center justify-center cursor-pointer hover:bg-surface-container-highest transition-colors font-label-sm" for="p4">4</label>
+<input checked="" class="hidden rating-input" id="p5" name="propriety" type="radio"/><label class="flex-1 h-10 border border-outline flex items-center justify-center cursor-pointer hover:bg-surface-container-highest transition-colors font-label-sm" for="p5">5</label>
+</div>
+</div>
+<!-- Overall -->
+<div class="group">
+<label class="flex justify-between items-end mb-4">
+<span class="font-body-md font-semibold">Overall / 综合感官</span>
+<span class="font-label-sm text-secondary">Scale 1-5</span>
+</label>
+<div class="flex justify-between gap-2">
+<input class="hidden rating-input" id="o1" name="overall" type="radio"/><label class="flex-1 h-10 border border-outline flex items-center justify-center cursor-pointer hover:bg-surface-container-highest transition-colors font-label-sm" for="o1">1</label>
+<input class="hidden rating-input" id="o2" name="overall" type="radio"/><label class="flex-1 h-10 border border-outline flex items-center justify-center cursor-pointer hover:bg-surface-container-highest transition-colors font-label-sm" for="o2">2</label>
+<input checked="" class="hidden rating-input" id="o3" name="overall" type="radio"/><label class="flex-1 h-10 border border-outline flex items-center justify-center cursor-pointer hover:bg-surface-container-highest transition-colors font-label-sm" for="o3">3</label>
+<input class="hidden rating-input" id="o4" name="overall" type="radio"/><label class="flex-1 h-10 border border-outline flex items-center justify-center cursor-pointer hover:bg-surface-container-highest transition-colors font-label-sm" for="o4">4</label>
+<input class="hidden rating-input" id="o5" name="overall" type="radio"/><label class="flex-1 h-10 border border-outline flex items-center justify-center cursor-pointer hover:bg-surface-container-highest transition-colors font-label-sm" for="o5">5</label>
+</div>
+</div>
+</div>
+<!-- Error Checklist -->
+<div class="pt-8 border-t border-outline-variant/30">
+<h4 class="font-label-sm text-secondary uppercase tracking-widest mb-6">Error Checklist / 瑕疵识别</h4>
+<div class="grid grid-cols-1 gap-4">
+<label class="flex items-center gap-3 cursor-pointer">
+<input class="w-5 h-5 border-2 border-outline-variant rounded-sm text-primary focus:ring-0" type="checkbox"/>
+<span class="font-body-md">Ink Smudge (墨渍扩散过度)</span>
+</label>
+<label class="flex items-center gap-3 cursor-pointer">
+<input class="w-5 h-5 border-2 border-outline-variant rounded-sm text-primary focus:ring-0" type="checkbox"/>
+<span class="font-body-md">Anachronism (时代违和)</span>
+</label>
+<label class="flex items-center gap-3 cursor-pointer">
+<input class="w-5 h-5 border-2 border-outline-variant rounded-sm text-primary focus:ring-0" type="checkbox"/>
+<span class="font-body-md">Poor Negative Space (留白失当)</span>
+</label>
+<label class="flex items-center gap-3 cursor-pointer">
+<input class="w-5 h-5 border-2 border-outline-variant rounded-sm text-primary focus:ring-0" type="checkbox"/>
+<span class="font-body-md">Edge Artifacts (边缘伪影)</span>
+</label>
+</div>
+</div>
+<!-- Final Action -->
+<div class="mt-8 relative pt-12 pb-32">
+<button class="w-full bg-primary text-white py-6 flex items-center justify-center gap-4 group overflow-hidden relative transition-all active:scale-95" id="applySealBtn" type="submit">
+<span class="font-headline-md tracking-widest z-10">Apply Seal / 落款评定</span>
+<div class="absolute inset-0 bg-red-800 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
+<span class="material-symbols-outlined z-10 group-hover:text-white transition-colors">approval</span>
+</button>
+<!-- Decorative Seal for animation -->
+<div class="absolute left-1/2 top-4 -translate-x-1/2 opacity-0 pointer-events-none seal-transition scale-150" id="visualSeal">
+<div class="w-20 h-20 border-4 border-red-800 text-red-800 flex flex-wrap items-center justify-center p-2 font-bold text-lg leading-tight bg-white shadow-xl rotate-12">
+<span>落</span><span>款</span>
+<span>定</span><span>稿</span>
+</div>
+</div>
+</div>
+</form>
+</aside>
+</main>
+<script>
+        document.getElementById('ratingForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const seal = document.getElementById('visualSeal');
+            const btn = document.getElementById('applySealBtn');
+            
+            // Animation for "Seal" effect
+            seal.classList.remove('opacity-0');
+            seal.classList.add('opacity-100', 'translate-y-20');
+            btn.innerHTML = '<span class="font-headline-md tracking-widest z-10">Rated / 已评定</span>';
+            btn.classList.add('bg-on-surface-variant');
+            btn.classList.remove('bg-primary');
+            
+            setTimeout(() => {
+                alert('评定结果已提交至墨谱系统。Rating submitted successfully.');
+                location.reload();
+            }, 1200);
+        });
+
+        // Simple cursor interaction
+        document.addEventListener('mousemove', (e) => {
+            const ink = document.querySelector('.ink-bleed');
+            if (ink) {
+                const moveX = (e.clientX - window.innerWidth / 2) / 30;
+                const moveY = (e.clientY - window.innerHeight / 2) / 30;
+                ink.style.transform = `translate(${moveX}px, ${moveY}px)`;
+            }
+        });
+    </script>
+</body></html>
