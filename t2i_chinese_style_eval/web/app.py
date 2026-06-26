@@ -10,6 +10,7 @@ from __future__ import annotations
 import csv
 import hashlib
 import html
+import json
 import mimetypes
 import os
 import re
@@ -19,7 +20,9 @@ from datetime import datetime, timezone
 from http import cookies
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from urllib.error import HTTPError, URLError
 from urllib.parse import parse_qs, urlparse
+from urllib.request import Request, urlopen
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 WEB_DIR = PROJECT_ROOT / "web"
@@ -31,10 +34,37 @@ HUMAN_SCORES_CSV = DATA_DIR / "human_scores.csv"
 RATINGS_CSV = DATA_DIR / "ratings.csv"
 DB_PATH = WEB_DIR / "app.db"
 
+
+def load_env_file(path: Path) -> None:
+    if not path.exists():
+        return
+    for raw_line in path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        key = key.strip()
+        value = value.strip().strip('"').strip("'")
+        if key and key not in os.environ:
+            os.environ[key] = value
+
+
+load_env_file(PROJECT_ROOT / ".env")
+load_env_file(PROJECT_ROOT / ".env.supabase")
+
 HOST = os.environ.get("HOST", "0.0.0.0")
 PORT = int(os.environ.get("PORT", "8063"))
+SUPABASE_URL = os.environ.get("SUPABASE_URL", "").rstrip("/")
+SUPABASE_SERVICE_ROLE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
+EVALUATION_SET_ID = os.environ.get("EVALUATION_SET_ID", "mvp_2026_06")
 
 ADMIN_IDS: set[str] = set(os.environ.get("ADMIN_IDS", "LYNN").split(",")) - {""}
+
+BLIND_MODEL_LABELS = {
+    "M01": "Model_A",
+    "M02": "Model_B",
+    "M03": "Model_C",
+}
 
 
 def is_admin(rater_id: str | None) -> bool:
@@ -79,6 +109,87 @@ def metadata_by_image_id() -> dict[str, dict[str, str]]:
 def real_prompt_for_image(image_id: str, fallback: str = "") -> str:
     meta = metadata_by_image_id().get(image_id, {})
     return (meta.get("original_prompt") or fallback or "").strip()
+
+
+def supabase_enabled() -> bool:
+    return bool(SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY)
+
+
+def generation_jobs_by_id() -> dict[str, dict[str, str]]:
+    jobs_csv_path = DATA_DIR / "generation_jobs.csv"
+    if not jobs_csv_path.exists():
+        return {}
+    with jobs_csv_path.open(newline="", encoding="utf-8") as f:
+        return {
+            row["job_id"]: row
+            for row in csv.DictReader(f)
+            if row.get("job_id")
+        }
+
+
+def supabase_rating_payload(
+    *,
+    rating_id: str,
+    image_id: str,
+    rater_id: str,
+    rated_at: str,
+    values: dict[str, int],
+    error_tags: str,
+    comment: str,
+) -> dict[str, object]:
+    meta = metadata_by_image_id().get(image_id)
+    if not meta:
+        raise ValueError(f"missing metadata for image_id={image_id}")
+    job = generation_jobs_by_id().get(meta["job_id"])
+    if not job:
+        raise ValueError(f"missing generation job for job_id={meta['job_id']}")
+    model_id = meta.get("model_id", "")
+    return {
+        "rating_id": rating_id,
+        "evaluation_set_id": EVALUATION_SET_ID,
+        "image_id": image_id,
+        "job_id": meta["job_id"],
+        "prompt_id": job["prompt_id"],
+        "reviewer_id": rater_id,
+        "blind_model_label": BLIND_MODEL_LABELS.get(model_id, "Model_Unknown"),
+        "style_consistency_score": values["style_consistency_score"],
+        "element_accuracy_score": values["element_accuracy_score"],
+        "error_control_score": values["error_control_score"],
+        "overall_score": values["overall_score"],
+        "error_tags": error_tags or None,
+        "comment": comment or None,
+        "created_at": rated_at,
+        "updated_at": rated_at,
+    }
+
+
+def upsert_supabase_rating(payload: dict[str, object]) -> None:
+    if not supabase_enabled():
+        return
+    endpoint = (
+        f"{SUPABASE_URL}/rest/v1/ratings"
+        "?on_conflict=evaluation_set_id,image_id,reviewer_id"
+    )
+    data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+    request = Request(
+        endpoint,
+        data=data,
+        method="POST",
+        headers={
+            "apikey": SUPABASE_SERVICE_ROLE_KEY,
+            "Authorization": f"Bearer {SUPABASE_SERVICE_ROLE_KEY}",
+            "Content-Type": "application/json",
+            "Prefer": "resolution=merge-duplicates,return=minimal",
+        },
+    )
+    try:
+        with urlopen(request, timeout=15):
+            return
+    except HTTPError as exc:
+        body = exc.read().decode("utf-8", errors="replace")
+        raise RuntimeError(f"Supabase rating upsert failed: HTTP {exc.code} {body}") from exc
+    except URLError as exc:
+        raise RuntimeError(f"Supabase rating upsert failed: {exc.reason}") from exc
 
 
 def apply_top_nav(page: str, active: str, rater_id: str | None) -> str:
@@ -1022,6 +1133,9 @@ class App(BaseHTTPRequestHandler):
                 return
             values[name] = int(raw)
         rating_id = f"R{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}_{secrets.token_hex(3)}"
+        rated_at = now_iso()
+        error_tags = "；".join(form.get("error_tags", []))
+        comment = (form.get("comment", [""])[0] or "").strip()
         try:
             with connect() as conn:
                 conn.execute(
@@ -1044,13 +1158,13 @@ class App(BaseHTTPRequestHandler):
                         rating_id,
                         image_id,
                         rater_id,
-                        now_iso(),
+                        rated_at,
                         values["style_consistency_score"],
                         values["element_accuracy_score"],
                         values["error_control_score"],
                         values["overall_score"],
-                        "；".join(form.get("error_tags", [])),
-                        (form.get("comment", [""])[0] or "").strip(),
+                        error_tags,
+                        comment,
                     ),
                 )
         except sqlite3.IntegrityError:
@@ -1058,6 +1172,28 @@ class App(BaseHTTPRequestHandler):
             return
         export_human_scores()
         export_ratings()
+        try:
+            upsert_supabase_rating(
+                supabase_rating_payload(
+                    rating_id=rating_id,
+                    image_id=image_id,
+                    rater_id=rater_id,
+                    rated_at=rated_at,
+                    values=values,
+                    error_tags=error_tags,
+                    comment=comment,
+                )
+            )
+        except Exception as exc:
+            self.send_html(
+                render_rate(
+                    rater_id,
+                    f"本地已保存，但 Supabase 同步失败：{exc}",
+                    image_id=image_id,
+                ),
+                502,
+            )
+            return
         self.redirect("/rate")
 
     def serve_image(self, filename: str) -> None:
