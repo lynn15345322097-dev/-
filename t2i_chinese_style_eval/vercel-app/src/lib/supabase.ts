@@ -97,5 +97,5 @@ export function getPreviewImageUrl(publicUrl: string): string {
     "/storage/v1/render/image/public/"
   );
   const separator = renderUrl.includes("?") ? "&" : "?";
-  return `${renderUrl}${separator}width=960&quality=75`;
+  return `${renderUrl}${separator}width=960&height=960&resize=contain&quality=75`;
 }
